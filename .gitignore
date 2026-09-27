@@ -1,0 +1,24 @@
+# Виртуальное окружение
+venv/
+.venv/
+env/
+
+# Секреты и конфиги
+config.yaml
+*.env
+
+# Кэш Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Настройки IDE
+.vscode/
+.idea/
+
+# Локальные логи
+*.log
+
+# Файлы ОС
+.DS_Store
+Thumbs.db
