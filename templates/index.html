@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Арбитражный сканер</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>🚀 Арбитражный сканер</h1>
+        <p>Данные обновляются в реальном времени</p>
+    </header>
+    <main>
+        {% if spreads %}
+            {% for pair, data in spreads.items() %}
+            <div class="pair-card">
+                <h2>{{ pair }}</h2>
+                <div class="spread-info">
+                    <span class="spread-usd">Спред: {{ data.spread_usd }} USDT</span>
+                    <span class="spread-pct">({{ data.spread_pct }}%)</span>
+                    <span class="net-profit">Чистая прибыль: {{ data.net_profit_usdt }} USDT</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Биржа</th>
+                            <th>Ask (купить)</th>
+                            <th>Bid (продать)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for quote in quotes.get(pair, []) %}
+                        <tr>
+                            <td>{{ quote.exchange }}</td>
+                            <td class="ask">{{ quote.ask }}</td>
+                            <td class="bid">{{ quote.bid }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>⏳ Ожидание данных от бирж... Подождите 10-15 секунд и обновите страницу.</p>
+        {% endif %}
+    </main>
+</body>
+</html>
