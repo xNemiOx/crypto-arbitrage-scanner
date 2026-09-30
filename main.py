@@ -250,7 +250,7 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
             # --- MEXC FUTURES ---
             elif exchange == "mexc":
                 mexc_pair = pair.replace("USDT", "_USDT")
-                url = f"https://contract.mexc.com/api/v1/contract/ticker?symbol={mexc_pair}"
+                url = f"https://api.mexc.com/api/v1/contract/ticker?symbol={mexc_pair}"
                 r = await client.get(url, timeout=5)
                 resp = r.json()
                 if not resp.get("success") or not resp.get("data"):
@@ -367,8 +367,11 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
             else:
                 return None
 
+    except (KeyError, IndexError, TypeError, ValueError, AttributeError):
+        # Пара не торгуется на этой бирже — молча пропускаем
+        return None
     except Exception as e:
-        print(f"\u274c \u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u043f\u0440\u043e\u0441\u0435 {pair} \u043d\u0430 {exchange}: {e}")
+        print(f"Ошибка {pair} на {exchange}: {e}")
         return None
 
 
@@ -508,8 +511,25 @@ def api_spreads():
 # =========================================================
 # 11. ФОНОВЫЙ СБОР ДАННЫХ
 # =========================================================
+
+async def fetch_with_retry(exchange: str, pair: str, retries: int = 2) -> Optional[Quote]:
+    """Повторяет запрос при сетевых сбоях."""
+    for attempt in range(retries):
+        try:
+            q = await fetch_from_exchange(exchange, pair)
+            return q
+        except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError):
+            if attempt < retries - 1:
+                await asyncio.sleep(1)
+                continue
+            return None
+        except Exception:
+            return None
+    return None
+
+
 async def fetch_and_store(exchange: str, pair: str):
-    q = await fetch_from_exchange(exchange, pair)
+    q = await fetch_with_retry(exchange, pair)
     if q:
         key = (exchange, pair)
         quotes_store[key] = StoredQuote(bid=q.bid, ask=q.ask, last=q.last, ts=q.ts)
