@@ -395,27 +395,53 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
 # =========================================================
 def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote]):
     """
-    Для каждого pair'а находим max_bid и min_ask по всем доступным exchanges.
-    Считаем спред и чистую прибыль с учётом комиссий.
+    Находит максимальный bid и минимальный ask по каждой паре.
+    Отсеивает выбросы (разные номиналы контрактов на разных биржах).
     """
+    import statistics
     global spreads_store
     current_time = time.time()
 
     for pair in PAIRS:
-        bids = []
-        asks = []
+        # Собираем все цены
+        prices_data = []  # [(bid, ask, exchange), ...]
         for ex in EXCHANGES:
             key = (ex, pair)
             if key in current_quotes:
                 q = current_quotes[key]
-                bids.append((q.bid, ex))
-                asks.append((q.ask, ex))
+                if q.bid > 0 and q.ask > 0:
+                    prices_data.append((q.bid, q.ask, ex))
 
-        if not bids or not asks:
+        if len(prices_data) < 2:
             continue
 
-        max_bid, max_bid_exchange = max(bids, key=lambda x: x[0])
-        min_ask, min_ask_exchange = min(asks, key=lambda x: x[0])
+        # Медиана как "эталонная" цена
+        bids_list = [p[0] for p in prices_data]
+        asks_list = [p[1] for p in prices_data]
+        median_bid = statistics.median(bids_list)
+        median_ask = statistics.median(asks_list)
+
+        # Отсеиваем выбросы — если цена отличается от медианы больше чем в 3 раза,
+        # значит это другой номинал контракта (1000x и т.п.), пропускаем
+        filtered = []
+        for bid, ask, ex in prices_data:
+            # Отклонение bid от медианы
+            bid_ratio = bid / median_bid if median_bid > 0 else 1
+            ask_ratio = ask / median_ask if median_ask > 0 else 1
+
+            if bid_ratio > 3 or bid_ratio < 0.33:
+                continue
+            if ask_ratio > 3 or ask_ratio < 0.33:
+                continue
+
+            filtered.append((bid, ask, ex))
+
+        if len(filtered) < 2:
+            continue
+
+        # Находим max bid и min ask среди "нормальных" цен
+        max_bid, _, max_bid_exchange = max(filtered, key=lambda x: x[0])
+        min_ask, _, min_ask_exchange = min(filtered, key=lambda x: x[1])
 
         if max_bid <= 0 or min_ask <= 0:
             continue
@@ -424,7 +450,7 @@ def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote
         spread_usd = max_bid - min_ask
         spread_pct = (spread_usd / mid_price) * 100.0 if mid_price != 0 else 0.0
 
-        # --- РАСЧЁТ ЧИСТОЙ ПРИБЫЛИ (на примере 1000 USDT) ---
+        # Расчёт чистой прибыли на 1000 USDT
         trade_amount_usdt = 1000.0
         buy_fee = EXCHANGE_FEES.get(min_ask_exchange, 0.001)
         asset_quantity = (trade_amount_usdt / min_ask) * (1 - buy_fee)
@@ -433,16 +459,16 @@ def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote
         net_profit = sell_revenue - trade_amount_usdt
 
         spreads_store[pair] = {
-            "spread_usd": round(spread_usd, 6),
+            "spread_usd": spread_usd,
             "spread_pct": round(spread_pct, 4),
-            "max_bid": round(max_bid, 6),
+            "max_bid": max_bid,
             "max_bid_exchange": max_bid_exchange,
-            "min_ask": round(min_ask, 6),
+            "min_ask": min_ask,
             "min_ask_exchange": min_ask_exchange,
             "net_profit_usdt": round(net_profit, 4),
         }
 
-        # Кулдаун 5 минут на пару, чтобы не спамить
+        # Кулдаун на 5 минут на пару
         if pair in last_alert_time and (current_time - last_alert_time[pair]) < 300:
             continue
 
@@ -457,13 +483,14 @@ def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote
                 f"по цене <b>{min_ask:.6f}</b>\n"
                 f"🔴 <b>ПРОДАТЬ</b> на <a href='{sell_link}'><b>{max_bid_exchange.upper()}</b></a> "
                 f"по цене <b>{max_bid:.6f}</b>\n\n"
-                f"📊 <b>Грязный спред:</b> {spread_usd:.4f} USDT ({spread_pct:.2f}%)\n"
+                f"📊 <b>Спред:</b> {spread_usd:.4f} USDT ({spread_pct:.2f}%)\n"
                 f"💵 <b>Чистая прибыль (на 1000 USDT):</b> ~<b>{net_profit:.2f} USDT</b>\n"
                 f"⏰ Время: {time.strftime('%H:%M:%S')}"
             )
             asyncio.create_task(telegram_notifier.send(text))
             last_alert_time[pair] = current_time
             print(f"📨 Отправлено уведомление в Telegram по паре {pair}")
+
 
 
 # =========================================================
