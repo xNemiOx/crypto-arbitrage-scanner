@@ -813,3 +813,80 @@ section[id], .top-section, .favorites-section {
 .sidebar-restore .overlay {
     transition: none !important;
 }
+
+/* ========== ВКЛАДКИ ========== */
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 25px;
+    background: var(--card-bg);
+    padding: 6px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px var(--shadow);
+    max-width: fit-content;
+    border: 1px solid var(--border);
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 10px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-btn:hover {
+    background: var(--card-hover);
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.35);
+}
+
+.tab-badge {
+    background: rgba(255, 255, 255, 0.25);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8em;
+    font-weight: 700;
+}
+
+.tab-btn.active .tab-badge {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* SPOT-бейдж на карточках */
+.spot-badge {
+    display: inline-block;
+    font-size: 0.55em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+/* Спот-карточка — голубой оттенок */
+.spot-card {
+    border-left: 4px solid #3498db !important;
+}

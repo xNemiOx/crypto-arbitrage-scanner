@@ -107,14 +107,16 @@ class StoredQuote(BaseModel):
 # =========================================================
 # 4. ХРАНИЛИЩА ДАННЫХ
 # =========================================================
-# Хранилище котировок: { (exchange, pair) : StoredQuote }
+# Фьючерсные хранилища
 quotes_store: Dict[Tuple[str, str], StoredQuote] = {}
-
-# Хранилище текущих spreads (для UI)
 spreads_store: Dict[str, Dict[str, float]] = {}
-
-# Защита от спама в Telegram: { pair : last_alert_timestamp }
 last_alert_time: Dict[str, float] = {}
+
+# Спот-хранилища (Deribit не торгует спотом)
+SPOT_EXCHANGES = [ex for ex in EXCHANGES if ex != "deribit"]
+spot_quotes_store: Dict[Tuple[str, str], StoredQuote] = {}
+spot_spreads_store: Dict[str, Dict[str, float]] = {}
+spot_last_alert_time: Dict[str, float] = {}
 
 
 # =========================================================
@@ -524,6 +526,27 @@ async def read_root(request: Request):
     # Остальные: всё, что не попало в топ-10
     rest = dict((k, v) for k, v in sorted_items if k not in top_10_pairs)
 
+    # === СПОТ ===
+    spot_quotes_by_pair = {}
+    for (ex, pair), q in spot_quotes_store.items():
+        spot_quotes_by_pair.setdefault(pair, []).append({
+            "exchange": ex,
+            "bid": q.bid,
+            "ask": q.ask,
+            "last": q.last,
+            "ts": q.ts,
+        })
+
+    def spot_sort_key(item):
+        data = item[1]
+        return (data.get("spread_pct", 0), data.get("spread_usd", 0))
+
+    spot_sorted = sorted(spot_spreads_store.items(), key=spot_sort_key, reverse=True)
+    spot_profitable = [(k, v) for k, v in spot_sorted if v.get("net_profit_usdt", 0) > 0]
+    spot_top_10 = dict(spot_profitable[:10])
+    spot_top_10_pairs = set(spot_top_10.keys())
+    spot_rest = dict((k, v) for k, v in spot_sorted if k not in spot_top_10_pairs)
+
     return templates.TemplateResponse(
         request=request,
         name="index.html",
@@ -531,6 +554,9 @@ async def read_root(request: Request):
             "quotes": quotes_by_pair,
             "top_spreads": top_10,
             "spreads": rest,
+            "spot_quotes": spot_quotes_by_pair,
+            "spot_top_spreads": spot_top_10,
+            "spot_spreads": spot_rest,
             "pairs_count": len(PAIRS),
             "exchanges_count": len(EXCHANGES),
         }
@@ -552,6 +578,27 @@ def api_quotes():
     return payload
 
 
+@app.get("/spot_quotes")
+def api_spot_quotes():
+    """Спот-котировки."""
+    payload = {}
+    for (ex, pair), q in spot_quotes_store.items():
+        payload.setdefault(pair, []).append({
+            "exchange": ex,
+            "bid": q.bid,
+            "ask": q.ask,
+            "last": q.last,
+            "ts": q.ts,
+        })
+    return payload
+
+
+@app.get("/spot_spreads")
+def api_spot_spreads():
+    """Спот-спреды."""
+    return spot_spreads_store
+
+
 @app.get("/spreads")
 def api_spreads():
     """Возвращает текущие спреды по парам (JSON)."""
@@ -561,6 +608,146 @@ def api_spreads():
 # =========================================================
 # 11. ФОНОВЫЙ СБОР ДАННЫХ
 # =========================================================
+
+async def fetch_spot_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
+    """Спот-версия запроса. Deribit не поддерживается."""
+    if MOCK:
+        return mock_quote(exchange, pair)
+
+    try:
+        client = await get_http_client()
+        if True:
+            # --- BINANCE SPOT ---
+            if exchange == "binance":
+                binance_special = {
+                    "SHIBUSDT": "1000SHIBUSDT", "PEPEUSDT": "1000PEPEUSDT",
+                    "FLOKIUSDT": "1000FLOKIUSDT", "BONKUSDT": "1000BONKUSDT",
+                    "LUNCUSDT": "1000LUNCUSDT", "SATSUSDT": "1000SATSUSDT",
+                    "RATSUSDT": "1000RATSUSDT", "CHEEMSUSDT": "1000CHEEMSUSDT",
+                }
+                binance_pair = binance_special.get(pair, pair)
+                url = f"https://api.binance.com/api/v3/ticker/bookTicker?symbol={binance_pair}"
+                r = await client.get(url, timeout=8)
+                data = r.json()
+                divisor = 1000.0 if pair in binance_special else 1.0
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bidPrice"]) / divisor,
+                    ask=float(data["askPrice"]) / divisor,
+                    last=None, ts=int(time.time() * 1000),
+                )
+
+            # --- BYBIT SPOT ---
+            elif exchange == "bybit":
+                url = f"https://api.bybit.com/v5/market/tickers?category=spot&symbol={pair}"
+                r = await client.get(url, timeout=8)
+                data = r.json()["result"]["list"][0]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bid1Price"]), ask=float(data["ask1Price"]),
+                    last=float(data["lastPrice"]), ts=int(time.time() * 1000),
+                )
+
+            # --- OKX SPOT ---
+            elif exchange == "okx":
+                okx_pair = pair.replace("USDT", "-USDT")
+                url = f"https://www.okx.com/api/v5/market/ticker?instId={okx_pair}"
+                r = await client.get(url, timeout=8)
+                data = r.json()["data"][0]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bidPx"]), ask=float(data["askPx"]),
+                    last=float(data["last"]), ts=int(time.time() * 1000),
+                )
+
+            # --- GATE.IO SPOT ---
+            elif exchange == "gateio":
+                gate_pair = pair.replace("USDT", "_USDT")
+                url = f"https://api.gateio.ws/api/v4/spot/tickers?currency_pair={gate_pair}"
+                r = await client.get(url, timeout=8)
+                data = r.json()[0]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["highest_bid"]), ask=float(data["lowest_ask"]),
+                    last=float(data["last"]), ts=int(time.time() * 1000),
+                )
+
+            # --- MEXC SPOT ---
+            elif exchange == "mexc":
+                url = f"https://api.mexc.com/api/v3/ticker/bookTicker?symbol={pair}"
+                r = await client.get(url, timeout=8)
+                data = r.json()
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bidPrice"]), ask=float(data["askPrice"]),
+                    last=None, ts=int(time.time() * 1000),
+                )
+
+            # --- HTX SPOT ---
+            elif exchange == "htx":
+                htx_pair = pair.lower()
+                url = f"https://api.huobi.pro/market/detail/merged?symbol={htx_pair}"
+                r = await client.get(url, timeout=8)
+                data = r.json()["tick"]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bid"][0]), ask=float(data["ask"][0]),
+                    last=float(data["close"]), ts=int(time.time() * 1000),
+                )
+
+            # --- BINGX SPOT ---
+            elif exchange == "bingx":
+                bingx_pair = pair.replace("USDT", "-USDT")
+                url = f"https://open-api.bingx.com/openApi/spot/v1/ticker/24hr?symbol={bingx_pair}"
+                r = await client.get(url, timeout=8)
+                data = r.json()["data"]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bidPrice"]), ask=float(data["askPrice"]),
+                    last=float(data["lastPrice"]), ts=int(time.time() * 1000),
+                )
+
+            # --- BITGET SPOT ---
+            elif exchange == "bitget":
+                url = f"https://api.bitget.com/api/v2/spot/market/tickers?symbol={pair}"
+                r = await client.get(url, timeout=8)
+                data = r.json()["data"][0]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bidPr"]), ask=float(data["askPr"]),
+                    last=float(data["lastPr"]), ts=int(time.time() * 1000),
+                )
+
+            else:
+                return None
+
+    except (KeyError, IndexError, TypeError, ValueError, AttributeError):
+        return None
+    except Exception as e:
+        print(f"Ошибка SPOT {pair} на {exchange}: {e}")
+        return None
+
+
+async def fetch_spot_with_retry(exchange: str, pair: str, retries: int = 2) -> Optional[Quote]:
+    for attempt in range(retries):
+        try:
+            return await fetch_spot_from_exchange(exchange, pair)
+        except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError):
+            if attempt < retries - 1:
+                await asyncio.sleep(1)
+                continue
+            return None
+        except Exception:
+            return None
+    return None
+
+
+async def fetch_and_store_spot(exchange: str, pair: str):
+    q = await fetch_spot_with_retry(exchange, pair)
+    if q:
+        key = (exchange, pair)
+        spot_quotes_store[key] = StoredQuote(bid=q.bid, ask=q.ask, last=q.last, ts=q.ts)
+
 
 async def fetch_with_retry(exchange: str, pair: str, retries: int = 2) -> Optional[Quote]:
     """Повторяет запрос при сетевых сбоях."""
@@ -585,6 +772,94 @@ async def fetch_and_store(exchange: str, pair: str):
         quotes_store[key] = StoredQuote(bid=q.bid, ask=q.ask, last=q.last, ts=q.ts)
 
 
+def compute_spot_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote]):
+    """Аналог compute_spreads_and_alerts, но для СПОТА."""
+    import statistics
+    global spot_spreads_store
+    current_time = time.time()
+
+    for pair in PAIRS:
+        prices_data = []
+        for ex in SPOT_EXCHANGES:
+            key = (ex, pair)
+            if key in current_quotes:
+                q = current_quotes[key]
+                if q.bid > 0 and q.ask > 0:
+                    prices_data.append((q.bid, q.ask, ex))
+
+        if len(prices_data) < 2:
+            continue
+
+        bids_list = [p[0] for p in prices_data]
+        asks_list = [p[1] for p in prices_data]
+        median_bid = statistics.median(bids_list)
+        median_ask = statistics.median(asks_list)
+
+        filtered = []
+        for bid, ask, ex in prices_data:
+            bid_ratio = bid / median_bid if median_bid > 0 else 1
+            ask_ratio = ask / median_ask if median_ask > 0 else 1
+            if bid_ratio > 3 or bid_ratio < 0.33:
+                continue
+            if ask_ratio > 3 or ask_ratio < 0.33:
+                continue
+            filtered.append((bid, ask, ex))
+
+        if len(filtered) < 2:
+            continue
+
+        max_bid, _, max_bid_exchange = max(filtered, key=lambda x: x[0])
+        min_ask, _, min_ask_exchange = min(filtered, key=lambda x: x[1])
+
+        if max_bid <= 0 or min_ask <= 0:
+            continue
+
+        mid_price = (max_bid + min_ask) / 2.0
+        spread_usd = max_bid - min_ask
+        spread_pct = (spread_usd / mid_price) * 100.0 if mid_price != 0 else 0.0
+
+        # Комиссии на споте выше + нужно учесть вывод монет (упрощённо)
+        trade_amount_usdt = 1000.0
+        buy_fee = EXCHANGE_FEES.get(min_ask_exchange, 0.001)
+        asset_quantity = (trade_amount_usdt / min_ask) * (1 - buy_fee)
+        sell_fee = EXCHANGE_FEES.get(max_bid_exchange, 0.001)
+        sell_revenue = asset_quantity * max_bid * (1 - sell_fee)
+        net_profit = sell_revenue - trade_amount_usdt
+
+        spot_spreads_store[pair] = {
+            "spread_usd": spread_usd,
+            "spread_pct": round(spread_pct, 4),
+            "max_bid": max_bid,
+            "max_bid_exchange": max_bid_exchange,
+            "min_ask": min_ask,
+            "min_ask_exchange": min_ask_exchange,
+            "net_profit_usdt": round(net_profit, 4),
+        }
+
+        if pair in spot_last_alert_time and (current_time - spot_last_alert_time[pair]) < 300:
+            continue
+
+        # Спот-алерты с более высоким порогом (учитывая комиссии за вывод)
+        if spread_pct >= ALERT_PCT and net_profit > 0:
+            buy_link = get_trade_link(min_ask_exchange, pair)
+            sell_link = get_trade_link(max_bid_exchange, pair)
+            text = (
+                f"💵 <b>СПОТ-АРБИТРАЖ!</b> 💵\n\n"
+                f"💰 Пара: <b>{pair}</b>\n\n"
+                f"🟢 <b>КУПИТЬ</b> на <a href='{buy_link}'><b>{min_ask_exchange.upper()}</b></a> "
+                f"по <b>{min_ask:.6f}</b>\n"
+                f"🔴 <b>ПРОДАТЬ</b> на <a href='{sell_link}'><b>{max_bid_exchange.upper()}</b></a> "
+                f"по <b>{max_bid:.6f}</b>\n\n"
+                f"📊 Спред: {spread_usd:.4f} USDT ({spread_pct:.2f}%)\n"
+                f"💵 Чистая прибыль (на 1000 USDT): ~<b>{net_profit:.2f} USDT</b>\n"
+                f"⚠️ Не забудь про комиссии за вывод между биржами!\n"
+                f"⏰ {time.strftime('%H:%M:%S')}"
+            )
+            asyncio.create_task(telegram_notifier.send(text))
+            spot_last_alert_time[pair] = current_time
+            print(f"📨 Отправлено СПОТ-уведомление по паре {pair}")
+
+
 async def data_collector():
     # Ограничиваем параллелизм: не более 10 одновременных запросов
     semaphore = asyncio.Semaphore(10)
@@ -593,14 +868,25 @@ async def data_collector():
         async with semaphore:
             return await fetch_and_store(exchange, pair)
 
+    async def fetch_limited_spot(exchange, pair):
+        async with semaphore:
+            return await fetch_and_store_spot(exchange, pair)
+
     while True:
         tasks = []
+        # Фьючерсы (все 9 бирж)
         for pair in PAIRS:
             for ex in EXCHANGES:
                 tasks.append(fetch_limited(ex, pair))
+        # Спот (без Deribit)
+        for pair in PAIRS:
+            for ex in SPOT_EXCHANGES:
+                tasks.append(fetch_limited_spot(ex, pair))
+
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
             compute_spreads_and_alerts(quotes_store)
+            compute_spot_spreads_and_alerts(spot_quotes_store)
         await asyncio.sleep(FETCH_INTERVAL)
 
 

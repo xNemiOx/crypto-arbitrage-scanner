@@ -21,7 +21,7 @@
     </div>
 
     <div class="sidebar-search">
-        <input type="text" id="search-input" placeholder="🔍 Поиск пары" autocomplete="off">
+        <input type="text" id="search-input" placeholder="🔍 Поиск пары (BTC, ETH...)" autocomplete="off">
     </div>
 
     <nav class="sidebar-nav">
@@ -37,7 +37,7 @@
             <span class="nav-icon">📊</span><span>Остальные</span>
         </a>
 
-        <div class="nav-section-title" style="margin-top:20px;">Фильтры</div>
+        <div class="nav-section-title" style="margin-top: 20px;">Фильтры</div>
         <a href="#" class="nav-item filter-item active" data-filter="all">
             <span class="nav-icon">🌐</span><span>Все пары</span>
         </a>
@@ -48,7 +48,7 @@
             <span class="nav-icon">⭐</span><span>Только избранные</span>
         </a>
 
-        <div class="nav-section-title" style="margin-top:20px;">Настройки</div>
+        <div class="nav-section-title" style="margin-top: 20px;">Настройки</div>
         <a href="#" class="nav-item" id="nav-theme">
             <span class="nav-icon" id="theme-icon-side">🌙</span>
             <span id="theme-label-side">Тёмная тема</span>
@@ -105,16 +105,22 @@
 
 <main class="page">
 
+    <!-- ВКЛАДКИ -->
     <div class="tabs">
-        <button class="tab-btn active" data-tab="futures">🚀 Фьючерсы <span class="tab-badge">{{ pairs_count }}</span></button>
-        <button class="tab-btn" data-tab="spot">💵 Спот <span class="tab-badge">{{ pairs_count }}</span></button>
+        <button class="tab-btn active" data-tab="futures">
+            🚀 Фьючерсы <span class="tab-badge">{{ pairs_count }}</span>
+        </button>
+        <button class="tab-btn" data-tab="spot">
+            💵 Спот <span class="tab-badge">{{ pairs_count }}</span>
+        </button>
     </div>
 
-    <!-- ============ ФЬЮЧЕРСЫ ============ -->
+    <!-- ================= ФЬЮЧЕРСЫ ================= -->
     <div id="tab-futures" class="tab-content active">
 
         <section id="favorites-section" class="favorites-section" style="display:none;">
             <h2 class="favorites-title">⭐ Избранное</h2>
+            <p class="favorites-subtitle">Твои отслеживаемые пары всегда наверху</p>
             <div class="grid-2" id="favorites-grid"></div>
         </section>
 
@@ -222,14 +228,8 @@
         {% endif %}
     </div>
 
-    <!-- ============ СПОТ ============ -->
+    <!-- ================= СПОТ ================= -->
     <div id="tab-spot" class="tab-content">
-
-        <section id="favorites-section-spot" class="favorites-section" style="display:none;">
-            <h2 class="favorites-title">⭐ Избранное (Спот)</h2>
-            <p class="favorites-subtitle">Твои отслеживаемые спот-пары</p>
-            <div class="grid-2" id="favorites-grid-spot"></div>
-        </section>
 
         {% if spot_top_spreads %}
         <section class="top-section">
@@ -237,7 +237,7 @@
             <p class="top-subtitle">Наибольший процентный спред (спот)</p>
             <div class="grid-2">
                 {% for pair, data in spot_top_spreads.items() %}
-                <div class="pair-card top-card spot-card" data-pair="{{ pair }}" data-profit="{{ data.net_profit_usdt }}">
+                <div class="pair-card top-card spot-card" data-spot-pair="{{ pair }}">
                     <div class="card-header">
                         <h2>{{ pair }} <span class="spot-badge">SPOT</span></h2>
                         <button class="fav-btn" data-pair="{{ pair }}">☆</button>
@@ -258,7 +258,9 @@
                             <tr class="{% if quote.exchange == data.min_ask_exchange %}row-buy{% elif quote.exchange == data.max_bid_exchange %}row-sell{% endif %}">
                                 <td>
                                     {{ quote.exchange }}
-                                    {% if quote.exchange == data.min_ask_exchange %}
+                                    {% if quote.exchange == data.min_ask_exchange and quote.exchange == data.max_bid_exchange %}
+                                        <span class="tag tag-both">обе</span>
+                                    {% elif quote.exchange == data.min_ask_exchange %}
                                         <span class="tag tag-buy">← КУПИТЬ</span>
                                     {% elif quote.exchange == data.max_bid_exchange %}
                                         <span class="tag tag-sell">← ПРОДАТЬ</span>
@@ -286,7 +288,7 @@
             <h2 class="rest-title">📊 Остальные спот-пары</h2>
             <div class="grid-2">
                 {% for pair, data in spot_spreads.items() %}
-                <div class="pair-card spot-card" data-pair="{{ pair }}" data-profit="{{ data.net_profit_usdt }}">
+                <div class="pair-card spot-card" data-spot-pair="{{ pair }}">
                     <div class="card-header">
                         <h2>{{ pair }} <span class="spot-badge">SPOT</span></h2>
                         <button class="fav-btn" data-pair="{{ pair }}">☆</button>
@@ -307,7 +309,9 @@
                             <tr class="{% if quote.exchange == data.min_ask_exchange %}row-buy{% elif quote.exchange == data.max_bid_exchange %}row-sell{% endif %}">
                                 <td>
                                     {{ quote.exchange }}
-                                    {% if quote.exchange == data.min_ask_exchange %}
+                                    {% if quote.exchange == data.min_ask_exchange and quote.exchange == data.max_bid_exchange %}
+                                        <span class="tag tag-both">обе</span>
+                                    {% elif quote.exchange == data.min_ask_exchange %}
                                         <span class="tag tag-buy">← КУПИТЬ</span>
                                     {% elif quote.exchange == data.max_bid_exchange %}
                                         <span class="tag tag-sell">← ПРОДАТЬ</span>
@@ -339,314 +343,246 @@
         <span>💰 <b>АрбитражНВКЗ</b> © 2026</span>
         <span class="sep">•</span>
         <span>Автообновление 15 сек</span>
+        <span class="sep">•</span>
+        <span>9 бирж • фьючерсы + спот</span>
     </div>
 </footer>
 
 <script>
-// Тема + вкладка до отрисовки
+// ============ ВКЛАДКИ ============
 (function() {
-    var t = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', t);
-    window.__initialTab = localStorage.getItem('active_tab') || 'futures';
+    const savedTab = localStorage.getItem('active_tab') || 'futures';
+    document.documentElement.classList.add('filters-pending');
+    window.__initialTab = savedTab;
 })();
 
-function initApp() {
-    var sidebar = document.getElementById('sidebar');
-    var overlay = document.getElementById('overlay');
+function initTabs() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
 
-    // ===== ТЕМА =====
-    function updateThemeUI(theme) {
-        var icon = document.getElementById('theme-icon');
-        var iconSide = document.getElementById('theme-icon-side');
-        var labelSide = document.getElementById('theme-label-side');
-        if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
-        if (iconSide) iconSide.textContent = theme === 'dark' ? '☀️' : '🌙';
-        if (labelSide) labelSide.textContent = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема';
+    function activateTab(name) {
+        tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+        tabContents.forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+        localStorage.setItem('active_tab', name);
     }
-    function toggleTheme() {
-        var cur = document.documentElement.getAttribute('data-theme') || 'light';
-        var next = cur === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('theme', next);
-        updateThemeUI(next);
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+    });
+
+    activateTab(window.__initialTab || 'futures');
+}
+
+// ============ ТЕМА ============
+(function() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+})();
+
+function updateThemeUI(theme) {
+    const icon = document.getElementById('theme-icon');
+    const iconSide = document.getElementById('theme-icon-side');
+    const labelSide = document.getElementById('theme-label-side');
+    if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+    if (iconSide) iconSide.textContent = theme === 'dark' ? '☀️' : '🌙';
+    if (labelSide) labelSide.textContent = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема';
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateThemeUI(next);
+}
+
+// ============ МЕНЮ ============
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+
+function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    localStorage.setItem('sidebar_open', '1');
+}
+
+function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+    document.body.style.overflow = '';
+    localStorage.setItem('sidebar_open', '0');
+}
+
+document.getElementById('menu-toggle').addEventListener('click', openSidebar);
+document.getElementById('sidebar-close').addEventListener('click', closeSidebar);
+overlay.addEventListener('click', closeSidebar);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+
+// ============ СЧЁТЧИК ============
+const pageLoadTime = Date.now();
+function updateCounter() {
+    const el = document.getElementById('update-counter');
+    if (!el) return;
+    const s = Math.floor((Date.now() - pageLoadTime) / 1000);
+    if (s < 5) el.textContent = 'Обновлено только что';
+    else if (s < 60) el.textContent = `Обновлено ${s} сек назад`;
+    else el.textContent = `Обновлено ${Math.floor(s / 60)} мин назад`;
+}
+setInterval(updateCounter, 1000);
+updateCounter();
+
+document.getElementById('nav-refresh').addEventListener('click', e => {
+    e.preventDefault();
+    window.location.reload();
+});
+document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+document.getElementById('nav-theme').addEventListener('click', e => {
+    e.preventDefault();
+    toggleTheme();
+});
+
+// ============ ИЗБРАННОЕ ============
+const FAV_KEY = 'favorite_pairs';
+function getFavorites() {
+    try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }
+    catch(e) { return []; }
+}
+function saveFavorites(list) { localStorage.setItem(FAV_KEY, JSON.stringify(list)); }
+
+function updateStats() {
+    const seen = new Set();
+    document.querySelectorAll('#top-grid .pair-card[data-pair], #rest-grid .pair-card[data-pair]').forEach(c => {
+        seen.add(c.dataset.pair);
+    });
+    const total = seen.size;
+    let profitCount = 0;
+    document.querySelectorAll('#top-grid .pair-card[data-pair], #rest-grid .pair-card[data-pair]').forEach(c => {
+        if (parseFloat(c.dataset.profit) > 0) profitCount++;
+    });
+    const favCount = getFavorites().length;
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-profit').textContent = profitCount;
+    document.getElementById('stat-fav').textContent = favCount;
+    document.getElementById('fav-count').textContent = favCount;
+    const headerCount = document.getElementById('header-pairs-count');
+    if (headerCount) headerCount.textContent = total + ' пар';
+}
+
+function renderFavorites() {
+    const favorites = getFavorites();
+    const favSection = document.getElementById('favorites-section');
+    const favGrid = document.getElementById('favorites-grid');
+    favGrid.innerHTML = '';
+
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+        const isFav = favorites.includes(btn.dataset.pair);
+        btn.textContent = isFav ? '★' : '☆';
+        btn.classList.toggle('active', isFav);
+    });
+
+    if (favorites.length === 0) {
+        favSection.style.display = 'none';
+        updateStats();
+        return;
     }
+
+    favSection.style.display = 'block';
+    document.querySelectorAll('#top-grid .pair-card[data-pair], #rest-grid .pair-card[data-pair]').forEach(card => {
+        if (favorites.includes(card.dataset.pair)) {
+            favGrid.appendChild(card.cloneNode(true));
+        }
+    });
+    bindFavButtons();
+    updateStats();
+}
+
+function bindFavButtons() {
+        // Обработчики уже навешаны через делегирование — ничего не делаем
+    });
+}
+
+// ============ ФИЛЬТРЫ ============
+function applyFilters() {
+    const filter = localStorage.getItem('filter') || 'all';
+    const search = (localStorage.getItem('search') || '').toLowerCase().trim();
+    const favorites = getFavorites();
+    const activeTab = localStorage.getItem('active_tab') || 'futures';
+    const tabEl = document.getElementById('tab-' + activeTab);
+
+    if (!tabEl) return;
+
+    let visible = 0;
+    tabEl.querySelectorAll('.pair-card[data-pair]').forEach(card => {
+        const pair = card.dataset.pair;
+        const profit = parseFloat(card.dataset.profit);
+        let show = true;
+        if (filter === 'profit' && profit <= 0) show = false;
+        if (filter === 'favorites' && !favorites.includes(pair)) show = false;
+        if (search && !pair.toLowerCase().includes(search)) show = false;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+}
+
+document.querySelectorAll('.filter-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.filter-item').forEach(i => i.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        localStorage.setItem('filter', e.currentTarget.dataset.filter);
+        applyFilters();
+        closeSidebar();
+    });
+});
+
+document.getElementById('search-input').addEventListener('input', function() {
+    localStorage.setItem('search', this.value);
+    applyFilters();
+});
+
+// ============ НАВИГАЦИЯ ============
+document.querySelectorAll('.nav-item[data-target]').forEach(item => {
+    item.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.getElementById(e.currentTarget.dataset.target);
+        if (target && target.style.display !== 'none') {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            target.classList.add('highlight-flash');
+            setTimeout(() => target.classList.remove('highlight-flash'), 1000);
+        }
+        closeSidebar();
+    });
+});
+
+// ============ СТАРТ ============
+document.addEventListener('DOMContentLoaded', function() {
     updateThemeUI(document.documentElement.getAttribute('data-theme') || 'light');
+    initTabs();
 
-    // ===== МЕНЮ =====
-    function openSidebar() {
-        sidebar.classList.add('open');
-        overlay.classList.add('show');
-        document.body.style.overflow = 'hidden';
-        localStorage.setItem('sidebar_open', '1');
-    }
-    function closeSidebar() {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('show');
-        document.body.style.overflow = '';
-        localStorage.setItem('sidebar_open', '0');
-    }
+    // Восстанавливаем активные фильтры
+    const savedFilter = localStorage.getItem('filter') || 'all';
+    document.querySelectorAll('.filter-item').forEach(i => {
+        i.classList.toggle('active', i.dataset.filter === savedFilter);
+    });
+    document.getElementById('search-input').value = localStorage.getItem('search') || '';
+
+    renderFavorites();
+    updateStats();
+    applyFilters();
+
+    // Восстанавливаем sidebar
     if (localStorage.getItem('sidebar_open') === '1') {
         sidebar.classList.add('open');
         overlay.classList.add('show');
     }
 
-    // ===== ВКЛАДКИ =====
-    function getActiveTab() {
-        return localStorage.getItem('active_tab') || 'futures';
-    }
-    function activateTab(name) {
-        document.querySelectorAll('.tab-btn').forEach(function(b) {
-            b.classList.toggle('active', b.dataset.tab === name);
-        });
-        document.querySelectorAll('.tab-content').forEach(function(c) {
-            c.classList.toggle('active', c.id === 'tab-' + name);
-        });
-        localStorage.setItem('active_tab', name);
-        renderFavorites(name);
-        applyFilters();
-        updateStats();
-    }
+    document.documentElement.classList.remove('filters-pending');
+});
 
-    // ===== СЧЁТЧИК =====
-    var pageLoadTime = Date.now();
-    function updateCounter() {
-        var el = document.getElementById('update-counter');
-        if (!el) return;
-        var s = Math.floor((Date.now() - pageLoadTime) / 1000);
-        if (s < 5) el.textContent = 'Обновлено только что';
-        else if (s < 60) el.textContent = 'Обновлено ' + s + ' сек назад';
-        else el.textContent = 'Обновлено ' + Math.floor(s / 60) + ' мин назад';
-    }
-    setInterval(updateCounter, 1000);
-    updateCounter();
-
-    // ===== РАЗДЕЛЬНОЕ ИЗБРАННОЕ =====
-    function favKey(tab) {
-        return 'favorite_pairs_' + (tab === 'spot' ? 'spot' : 'futures');
-    }
-    function getFavorites(tab) {
-        tab = tab || getActiveTab();
-        try { return JSON.parse(localStorage.getItem(favKey(tab)) || '[]'); }
-        catch (e) { return []; }
-    }
-    function saveFavorites(tab, list) {
-        localStorage.setItem(favKey(tab), JSON.stringify(list));
-    }
-    function favSectionId(tab) {
-        return tab === 'spot' ? 'favorites-section-spot' : 'favorites-section';
-    }
-    function favGridId(tab) {
-        return tab === 'spot' ? 'favorites-grid-spot' : 'favorites-grid';
-    }
-
-    function updateStats() {
-        var tab = getActiveTab();
-        var tabEl = document.getElementById('tab-' + tab);
-        if (!tabEl) return;
-        var seen = new Set();
-        tabEl.querySelectorAll('.pair-card[data-pair]').forEach(function(c) {
-            if (c.closest('.favorites-section')) return;
-            seen.add(c.dataset.pair);
-        });
-        var total = seen.size;
-        var profitCount = 0;
-        tabEl.querySelectorAll('.pair-card[data-pair]').forEach(function(c) {
-            if (c.closest('.favorites-section')) return;
-            if (parseFloat(c.dataset.profit) > 0) profitCount++;
-        });
-        var favCount = getFavorites(tab).length;
-        var st = document.getElementById('stat-total');
-        var sp = document.getElementById('stat-profit');
-        var sf = document.getElementById('stat-fav');
-        var fc = document.getElementById('fav-count');
-        var hc = document.getElementById('header-pairs-count');
-        if (st) st.textContent = total;
-        if (sp) sp.textContent = profitCount;
-        if (sf) sf.textContent = favCount;
-        if (fc) fc.textContent = favCount;
-        if (hc) hc.textContent = total + ' пар';
-    }
-
-    function renderFavorites(tab) {
-        tab = tab || getActiveTab();
-        var favorites = getFavorites(tab);
-        var tabEl = document.getElementById('tab-' + tab);
-        var favSection = document.getElementById(favSectionId(tab));
-        var favGrid = document.getElementById(favGridId(tab));
-
-        // Обновляем звёздочки во всех карточках вкладки
-        if (tabEl) {
-            tabEl.querySelectorAll('.fav-btn').forEach(function(btn) {
-                var isFav = favorites.indexOf(btn.dataset.pair) !== -1;
-                btn.textContent = isFav ? '★' : '☆';
-                btn.classList.toggle('active', isFav);
-            });
-        }
-
-        if (!favSection || !favGrid) return;
-        favGrid.innerHTML = '';
-
-        if (favorites.length === 0) {
-            favSection.style.display = 'none';
-            return;
-        }
-        favSection.style.display = 'block';
-
-        if (tabEl) {
-            // Ищем оригинальные карточки (не копии)
-            tabEl.querySelectorAll('.pair-card[data-pair]').forEach(function(card) {
-                if (favSection.contains(card)) return;
-                if (favorites.indexOf(card.dataset.pair) !== -1) {
-                    favGrid.appendChild(card.cloneNode(true));
-                }
-            });
-        }
-    }
-
-    function toggleFavorite(pair, tab) {
-        tab = tab || getActiveTab();
-        var favorites = getFavorites(tab);
-        var idx = favorites.indexOf(pair);
-        if (idx !== -1) {
-            favorites.splice(idx, 1);
-        } else {
-            favorites.push(pair);
-        }
-        saveFavorites(tab, favorites);
-        renderFavorites(tab);
-        applyFilters();
-        updateStats();
-    }
-
-    // ===== ФИЛЬТРЫ =====
-    function applyFilters() {
-        var filter = localStorage.getItem('filter') || 'all';
-        var search = (localStorage.getItem('search') || '').toLowerCase().trim();
-        var tab = getActiveTab();
-        var favorites = getFavorites(tab);
-        var tabEl = document.getElementById('tab-' + tab);
-        if (!tabEl) return;
-
-        var favSection = document.getElementById(favSectionId(tab));
-        var topSection = tabEl.querySelector('.top-section');
-        var restSection = tabEl.querySelector('.rest-section');
-
-        // Скрываем/показываем секции
-        if (filter === 'favorites') {
-            if (topSection) topSection.style.display = 'none';
-            if (restSection) restSection.style.display = 'none';
-            if (favSection) favSection.style.display = favorites.length > 0 ? 'block' : 'none';
-        } else {
-            if (topSection) topSection.style.display = '';
-            if (restSection) restSection.style.display = '';
-            if (favSection) favSection.style.display = favorites.length > 0 ? 'block' : 'none';
-        }
-
-        // Фильтруем карточки в top/rest
-        var visible = 0;
-        tabEl.querySelectorAll('.pair-card[data-pair]').forEach(function(card) {
-            if (favSection && favSection.contains(card)) return;
-            var pair = card.dataset.pair;
-            var profit = parseFloat(card.dataset.profit);
-            var show = true;
-            if (filter === 'profit' && profit <= 0) show = false;
-            if (search && pair.toLowerCase().indexOf(search) === -1) show = false;
-            card.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-
-        var nr = document.getElementById('no-results');
-        if (nr) nr.style.display = (visible === 0 && filter !== 'favorites' && favorites.length === 0) ? 'block' : 'none';
-    }
-
-    // Восстанавливаем активный фильтр и поиск
-    document.querySelectorAll('.filter-item').forEach(function(i) {
-        i.classList.toggle('active', i.dataset.filter === (localStorage.getItem('filter') || 'all'));
-    });
-    var searchInput = document.getElementById('search-input');
-    if (searchInput) searchInput.value = localStorage.getItem('search') || '';
-
-    // ===== ОБРАБОТЧИКИ =====
-    document.getElementById('menu-toggle').addEventListener('click', function(e) {
-        e.preventDefault();
-        if (sidebar.classList.contains('open')) closeSidebar();
-        else openSidebar();
-    });
-    document.getElementById('sidebar-close').addEventListener('click', closeSidebar);
-    overlay.addEventListener('click', closeSidebar);
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeSidebar();
-    });
-
-    document.querySelectorAll('.tab-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() { activateTab(btn.dataset.tab); });
-    });
-
-    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
-    document.getElementById('nav-theme').addEventListener('click', function(e) {
-        e.preventDefault();
-        toggleTheme();
-    });
-
-    document.getElementById('nav-refresh').addEventListener('click', function(e) {
-        e.preventDefault();
-        window.location.reload();
-    });
-
-    document.querySelectorAll('.filter-item').forEach(function(item) {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.querySelectorAll('.filter-item').forEach(function(i) { i.classList.remove('active'); });
-            item.classList.add('active');
-            localStorage.setItem('filter', item.dataset.filter);
-            applyFilters();
-            closeSidebar();
-        });
-    });
-
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            localStorage.setItem('search', searchInput.value);
-            applyFilters();
-        });
-    }
-
-    document.querySelectorAll('.nav-item[data-target]').forEach(function(item) {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            var target = document.getElementById(item.dataset.target);
-            if (target && target.style.display !== 'none') {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                target.classList.add('highlight-flash');
-                setTimeout(function() { target.classList.remove('highlight-flash'); }, 1000);
-            }
-            closeSidebar();
-        });
-    });
-
-    // Избранное — делегирование, определяем вкладку автоматически
-    document.addEventListener('click', function(e) {
-        var btn = e.target.closest ? e.target.closest('.fav-btn') : null;
-        if (btn) {
-            e.preventDefault();
-            e.stopPropagation();
-            var tabEl = btn.closest('.tab-content');
-            var tab = tabEl ? tabEl.id.replace('tab-', '') : getActiveTab();
-            toggleFavorite(btn.dataset.pair, tab);
-        }
-    });
-
-    // ===== СТАРТ =====
-    activateTab(window.__initialTab || 'futures');
-
-    setTimeout(function() { window.location.reload(); }, 15000);
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
-} else {
-    initApp();
-}
+setTimeout(() => window.location.reload(), 15000);
 </script>
 </body>
 </html>
