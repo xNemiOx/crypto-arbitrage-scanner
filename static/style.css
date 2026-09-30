@@ -2,14 +2,64 @@ body { font-family: sans-serif; background-color: #f4f4f9; color: #333; margin: 
 header { text-align: center; margin-bottom: 30px; }
 h1 { color: #2c3e50; }
 main { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
-.pair-card { background: #fff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 20px; width: 100%; max-width: 600px; }
+
+.pair-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 20px;
+    width: 100%;
+    max-width: 600px;
+}
+
 .pair-card h2 { margin-top: 0; color: #34495e; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; }
-.spread-info { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 0.9em; }
+
+.spread-info { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; font-size: 0.9em; }
 .spread-usd { color: #e67e22; font-weight: bold; }
 .spread-pct { color: #e67e22; }
-.net-profit { color: #27ae60; font-weight: bold; }
+.net-profit { font-weight: bold; }
+.profit-positive { color: #16a085; }
+.profit-negative { color: #c0392b; }
+
+.legend { display: flex; gap: 15px; margin: 10px 0 15px; font-size: 0.8em; color: #7f8c8d; }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot-buy { background-color: #27ae60; }
+.dot-sell { background-color: #e74c3c; }
+
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ecf0f1; }
 th { background-color: #f8f9fa; font-weight: 600; }
-.ask { color: #c0392b; }
-.bid { color: #27ae60; }
+
+.ask { color: #c0392b; font-family: 'Consolas', monospace; }
+.bid { color: #27ae60; font-family: 'Consolas', monospace; }
+
+/* Подсветка лучших строк */
+.row-buy { background-color: #e8f8f0 !important; border-left: 5px solid #27ae60; }
+.row-sell { background-color: #fdecea !important; border-left: 5px solid #e74c3c; }
+.row-buy.row-sell { background-color: #fef5e7 !important; border-left: 5px solid #f39c12; }
+
+/* Теги на бирже */
+.tag {
+    display: inline-block;
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    font-weight: bold;
+    vertical-align: middle;
+}
+.tag-buy { background-color: #27ae60; color: white; }
+.tag-sell { background-color: #e74c3c; color: white; }
+.tag-both { background-color: #f39c12; color: white; }
+
+/* Подсказка внизу карточки */
+.action-hint {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    font-size: 0.9em;
+    text-align: center;
+    color: #555;
+}

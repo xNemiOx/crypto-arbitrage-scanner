@@ -19,8 +19,18 @@
                 <div class="spread-info">
                     <span class="spread-usd">Спред: {{ data.spread_usd }} USDT</span>
                     <span class="spread-pct">({{ data.spread_pct }}%)</span>
-                    <span class="net-profit">Чистая прибыль: {{ data.net_profit_usdt }} USDT</span>
+                    {% if data.net_profit_usdt > 0 %}
+                        <span class="net-profit profit-positive">✅ Чистая прибыль: +{{ data.net_profit_usdt }} USDT</span>
+                    {% else %}
+                        <span class="net-profit profit-negative">❌ Чистая прибыль: {{ data.net_profit_usdt }} USDT</span>
+                    {% endif %}
                 </div>
+
+                <div class="legend">
+                    <span class="legend-item"><span class="dot dot-buy"></span> Лучшая цена покупки</span>
+                    <span class="legend-item"><span class="dot dot-sell"></span> Лучшая цена продажи</span>
+                </div>
+
                 <table>
                     <thead>
                         <tr>
@@ -31,19 +41,44 @@
                     </thead>
                     <tbody>
                         {% for quote in quotes.get(pair, []) %}
-                        <tr>
-                            <td>{{ quote.exchange }}</td>
+                        <tr class="{% if quote.exchange == data.min_ask_exchange %}row-buy{% elif quote.exchange == data.max_bid_exchange %}row-sell{% endif %}">
+                            <td>
+                                {{ quote.exchange }}
+                                {% if quote.exchange == data.min_ask_exchange and quote.exchange == data.max_bid_exchange %}
+                                    <span class="tag tag-both">купить и продать</span>
+                                {% elif quote.exchange == data.min_ask_exchange %}
+                                    <span class="tag tag-buy">← КУПИТЬ здесь</span>
+                                {% elif quote.exchange == data.max_bid_exchange %}
+                                    <span class="tag tag-sell">← ПРОДАТЬ здесь</span>
+                                {% endif %}
+                            </td>
                             <td class="ask">{{ quote.ask }}</td>
                             <td class="bid">{{ quote.bid }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+
+                <div class="action-hint">
+                    🟢 Купить на <b>{{ data.min_ask_exchange.upper() }}</b> по <b>{{ data.min_ask }}</b>
+                    &nbsp;→&nbsp;
+                    🔴 Продать на <b>{{ data.max_bid_exchange.upper() }}</b> по <b>{{ data.max_bid }}</b>
+                </div>
             </div>
             {% endfor %}
         {% else %}
             <p>⏳ Ожидание данных от бирж... Подождите 10-15 секунд и обновите страницу.</p>
         {% endif %}
     </main>
+
+    <footer style="text-align: center; margin-top: 30px; color: #95a5a6; font-size: 0.85em;">
+        🔄 Автообновление каждые 15 секунд
+    </footer>
+
+    <script>
+        setTimeout(function() {
+            window.location.reload();
+        }, 15000);
+    </script>
 </body>
 </html>

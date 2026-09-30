@@ -163,10 +163,9 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
         return mock_quote(exchange, pair)
 
     try:
-        async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0"}, timeout=10) as client:
-            # --- BINANCE USDT-M FUTURES ---
+        async with httpx.AsyncClient() as client:
             if exchange == "binance":
-                url = f"https://fapi.binance.com/fapi/v1/ticker/bookTicker?symbol={pair}"
+                url = f"https://api.binance.com/api/v3/ticker/bookTicker?symbol={pair}"
                 r = await client.get(url, timeout=5)
                 data = r.json()
                 return Quote(
@@ -175,9 +174,8 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
                     last=None, ts=int(time.time() * 1000),
                 )
 
-            # --- BYBIT USDT PERPETUAL (linear) ---
             elif exchange == "bybit":
-                url = f"https://api.bybit.com/v5/market/tickers?category=linear&symbol={pair}"
+                url = f"https://api.bybit.com/v5/market/tickers?category=spot&symbol={pair}"
                 r = await client.get(url, timeout=5)
                 data = r.json()["result"]["list"][0]
                 return Quote(
@@ -186,9 +184,8 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
                     last=float(data["lastPrice"]), ts=int(time.time() * 1000),
                 )
 
-            # --- OKX SWAP (USDT-margined) ---
             elif exchange == "okx":
-                okx_pair = pair.replace("USDT", "-USDT-SWAP")
+                okx_pair = pair.replace("USDT", "-USDT")
                 url = f"https://www.okx.com/api/v5/market/ticker?instId={okx_pair}"
                 r = await client.get(url, timeout=5)
                 data = r.json()["data"][0]
@@ -198,10 +195,9 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
                     last=float(data["last"]), ts=int(time.time() * 1000),
                 )
 
-            # --- GATE.IO USDT FUTURES ---
             elif exchange == "gateio":
                 gate_pair = pair.replace("USDT", "_USDT")
-                url = f"https://api.gateio.ws/api/v4/futures/usdt/tickers?contract={gate_pair}"
+                url = f"https://api.gateio.ws/api/v4/spot/tickers?currency_pair={gate_pair}"
                 r = await client.get(url, timeout=5)
                 data = r.json()[0]
                 return Quote(
@@ -209,37 +205,12 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
                     bid=float(data["highest_bid"]), ask=float(data["lowest_ask"]),
                     last=float(data["last"]), ts=int(time.time() * 1000),
                 )
-
-            # --- MEXC FUTURES ---
-            elif exchange == "mexc":
-                mexc_pair = pair.replace("USDT", "_USDT")
-                url = f"https://contract.mexc.com/api/v1/contract/ticker?symbol={mexc_pair}"
-                r = await client.get(url, timeout=5)
-                data = r.json()["data"]
-                return Quote(
-                    exchange=exchange, pair=pair,
-                    bid=float(data["bid1"]), ask=float(data["ask1"]),
-                    last=float(data.get("lastPrice") or 0) or None,
-                    ts=int(time.time() * 1000),
-                )
-
-            # --- HTX (HUOBI) LINEAR SWAP ---
-            elif exchange == "htx":
-                htx_pair = pair.replace("USDT", "-USDT")
-                url = f"https://api.hbdm.com/linear-swap-ex/market/detail/merged?contract_code={htx_pair}"
-                r = await client.get(url, timeout=5)
-                data = r.json()["tick"]
-                return Quote(
-                    exchange=exchange, pair=pair,
-                    bid=float(data["bid"][0]), ask=float(data["ask"][0]),
-                    last=float(data["close"]), ts=int(time.time() * 1000),
-                )
-
+            
             else:
                 return None
 
     except Exception as e:
-        print(f"\u274c \u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u043f\u0440\u043e\u0441\u0435 {pair} \u043d\u0430 {exchange}: {e}")
+        print(f"❌ Ошибка при запросе {pair} на {exchange}: {e}")
         return None
 
 
@@ -299,7 +270,7 @@ def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote
         if pair in last_alert_time and (current_time - last_alert_time[pair]) < 300:
             continue
 
-        if (spread_usd >= ALERT_USD or spread_pct >= ALERT_PCT) and net_profit > 0:
+        if spread_usd >= ALERT_USD and spread_pct >= ALERT_PCT and net_profit > 0:
             buy_link = get_trade_link(min_ask_exchange, pair)
             sell_link = get_trade_link(max_bid_exchange, pair)
 
