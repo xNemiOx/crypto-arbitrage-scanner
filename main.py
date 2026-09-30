@@ -78,6 +78,7 @@ PAIRS: List[str] = config.get("pairs", [])
 EXCHANGES: List[str] = config.get("exchanges", [])
 ALERT_USD = float(config.get("alerts", {}).get("spread_usd", 0.5))
 ALERT_PCT = float(config.get("alerts", {}).get("spread_pct", 0.5))
+SPOT_ALERTS_ENABLED = config.get("alerts", {}).get("spot_alerts_enabled", False)
 
 # Токен и chat_id берём из переменных окружения (для облака),
 # а если их нет — из config.yaml (для локального запуска)
@@ -840,7 +841,7 @@ def compute_spot_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], Stored
             continue
 
         # Спот-алерты с более высоким порогом (учитывая комиссии за вывод)
-        if spread_pct >= ALERT_PCT and net_profit > 0:
+        if SPOT_ALERTS_ENABLED and spread_pct >= ALERT_PCT and net_profit > 0:
             buy_link = get_trade_link(min_ask_exchange, pair)
             sell_link = get_trade_link(max_bid_exchange, pair)
             text = (
