@@ -3,37 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Арбитражный сканер</title>
+    <title>АрбитражНВКЗ — Фьючерсный сканер</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <header>
-        <h1>🚀 Арбитражный сканер</h1>
-        <p>Данные обновляются в реальном времени</p>
-    </header>
+
+<!-- Оверлей для закрытия меню -->
+<div id="overlay" class="overlay"></div>
+
+<!-- БОКОВОЕ МЕНЮ -->
+<aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-logo">
+            <span class="logo-icon-small">💰</span>
+            <span><b>Арбитраж</b><span class="logo-accent">НВКЗ</span></span>
+        </div>
+        <button id="sidebar-close" class="icon-btn" title="Закрыть">✕</button>
+    </div>
+
+    <div class="sidebar-search">
+        <input type="text" id="search-input" placeholder="🔍 Поиск пары (BTC, ETH...)" autocomplete="off">
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section-title">Навигация</div>
+        <a href="#" class="nav-item" data-target="top-section">
+            <span class="nav-icon">🔥</span>
+            <span>Топ-10 возможностей</span>
+        </a>
+        <a href="#" class="nav-item" data-target="favorites-section">
+            <span class="nav-icon">⭐</span>
+            <span>Избранное</span>
+            <span class="nav-count" id="fav-count">0</span>
+        </a>
+        <a href="#" class="nav-item" data-target="rest-section">
+            <span class="nav-icon">📊</span>
+            <span>Остальные пары</span>
+        </a>
+
+        <div class="nav-section-title" style="margin-top: 20px;">Фильтры</div>
+        <a href="#" class="nav-item filter-item active" data-filter="all">
+            <span class="nav-icon">🌐</span>
+            <span>Все пары</span>
+        </a>
+        <a href="#" class="nav-item filter-item" data-filter="profit">
+            <span class="nav-icon">💚</span>
+            <span>Только прибыльные</span>
+        </a>
+        <a href="#" class="nav-item filter-item" data-filter="favorites">
+            <span class="nav-icon">⭐</span>
+            <span>Только избранные</span>
+        </a>
+
+        <div class="nav-section-title" style="margin-top: 20px;">Сортировка</div>
+        <a href="#" class="nav-item sort-item active" data-sort="percent">
+            <span class="nav-icon">📈</span>
+            <span>По проценту</span>
+        </a>
+        <a href="#" class="nav-item sort-item" data-sort="usd">
+            <span class="nav-icon">💵</span>
+            <span>По спреду USDT</span>
+        </a>
+
+        <div class="nav-section-title" style="margin-top: 20px;">Настройки</div>
+        <a href="#" class="nav-item" id="nav-theme">
+            <span class="nav-icon" id="theme-icon-side">🌙</span>
+            <span id="theme-label-side">Тёмная тема</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-refresh">
+            <span class="nav-icon">🔄</span>
+            <span>Обновить сейчас</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="sidebar-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-label">Всего пар</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-profit">0</div>
+                <div class="stat-label">Прибыльных</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-fav">0</div>
+                <div class="stat-label">В избранном</div>
+            </div>
+        </div>
+        <div class="sidebar-info">9 бирж • 24/7</div>
+    </div>
+</aside>
+
+<header>
+    <div class="logo-block">
+        <button id="menu-toggle" class="icon-btn menu-btn" title="Открыть меню">
+            <span>☰</span>
+        </button>
+        <div class="logo-icon">💰</div>
+        <div>
+            <h1>Арбитраж<span class="logo-accent">НВКЗ</span></h1>
+            <p class="tagline">Мониторинг фьючерсных спредов</p>
+        </div>
+    </div>
+    <div class="header-controls">
+        <div class="header-meta">
+            <span class="live-dot"></span>
+            <span>LIVE</span>
+            <span class="sep">•</span>
+            <span>9 бирж</span>
+            <span class="sep">•</span>
+            <span>50 пар</span>
+        </div>
+        <div class="header-meta update-info">
+            <span>🔄</span>
+            <span id="update-counter">Обновлено только что</span>
+        </div>
+        <button id="theme-toggle" class="theme-btn" title="Сменить тему">
+            <span id="theme-icon">🌙</span>
+        </button>
+    </div>
+</header>
+
+<main class="page" id="main-content">
+
+    <section id="favorites-section" class="favorites-section" style="display:none;">
+        <h2 class="favorites-title">⭐ Избранное</h2>
+        <p class="favorites-subtitle">Твои отслеживаемые пары всегда наверху</p>
+        <div class="grid-2" id="favorites-grid"></div>
+    </section>
 
     {% if top_spreads %}
-    <section class="top-section">
+    <section class="top-section" id="top-section">
         <h2 class="top-title">🔥 Топ-10 возможностей</h2>
-        <p class="top-subtitle">Наибольший спред между биржами прямо сейчас</p>
-        <main class="top-grid">
+        <p class="top-subtitle">Наибольший процентный спред между биржами</p>
+        <div class="grid-2" id="top-grid">
             {% for pair, data in top_spreads.items() %}
-            <div class="pair-card top-card">
-                <h2>{{ pair }}</h2>
+            <div class="pair-card top-card" data-pair="{{ pair }}" data-profit="{{ data.net_profit_usdt }}">
+                <div class="card-header">
+                    <h2>{{ pair }}</h2>
+                    <button class="fav-btn" data-pair="{{ pair }}" title="В избранное">☆</button>
+                </div>
                 <div class="spread-info">
                     <span class="spread-usd">Спред: {{ data.spread_usd|fmt }} USDT</span>
                     <span class="spread-pct">({{ "%.4f"|format(data.spread_pct) }}%)</span>
                     {% if data.net_profit_usdt > 0 %}
-                        <span class="net-profit profit-positive">✅ Прибыль: +{{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
+                        <span class="net-profit profit-positive">✅ +{{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
                     {% else %}
-                        <span class="net-profit profit-negative">❌ Прибыль: {{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
+                        <span class="net-profit profit-negative">❌ {{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
                     {% endif %}
                 </div>
-
                 <table>
-                    <thead>
-                        <tr><th>Биржа</th><th>Ask (купить)</th><th>Bid (продать)</th></tr>
-                    </thead>
+                    <thead><tr><th>Биржа</th><th>Ask</th><th>Bid</th></tr></thead>
                     <tbody>
                         {% for quote in quotes.get(pair, []) %}
                         <tr class="{% if quote.exchange == data.min_ask_exchange %}row-buy{% elif quote.exchange == data.max_bid_exchange %}row-sell{% endif %}">
@@ -42,9 +164,9 @@
                                 {% if quote.exchange == data.min_ask_exchange and quote.exchange == data.max_bid_exchange %}
                                     <span class="tag tag-both">купить и продать</span>
                                 {% elif quote.exchange == data.min_ask_exchange %}
-                                    <span class="tag tag-buy">← КУПИТЬ здесь</span>
+                                    <span class="tag tag-buy">← КУПИТЬ</span>
                                 {% elif quote.exchange == data.max_bid_exchange %}
-                                    <span class="tag tag-sell">← ПРОДАТЬ здесь</span>
+                                    <span class="tag tag-sell">← ПРОДАТЬ</span>
                                 {% endif %}
                             </td>
                             <td class="ask">{{ quote.ask|fmt }}</td>
@@ -53,38 +175,38 @@
                         {% endfor %}
                     </tbody>
                 </table>
-
                 <div class="action-hint">
-                    🟢 Купить на <b>{{ data.min_ask_exchange.upper() }}</b> по <b>{{ data.min_ask|fmt }}</b>
-                    &nbsp;→&nbsp;
-                    🔴 Продать на <b>{{ data.max_bid_exchange.upper() }}</b> по <b>{{ data.max_bid|fmt }}</b>
+                    🟢 <b>{{ data.min_ask_exchange.upper() }}</b> {{ data.min_ask|fmt }}
+                    <span class="arrow">→</span>
+                    🔴 <b>{{ data.max_bid_exchange.upper() }}</b> {{ data.max_bid|fmt }}
                 </div>
             </div>
             {% endfor %}
-        </main>
+        </div>
     </section>
     {% endif %}
 
     {% if spreads %}
-    <section class="rest-section">
+    <section class="rest-section" id="rest-section">
         <h2 class="rest-title">📊 Остальные пары</h2>
-        <main class="rest-grid">
+        <div class="grid-2" id="rest-grid">
             {% for pair, data in spreads.items() %}
-            <div class="pair-card">
-                <h2>{{ pair }}</h2>
+            <div class="pair-card" data-pair="{{ pair }}" data-profit="{{ data.net_profit_usdt }}">
+                <div class="card-header">
+                    <h2>{{ pair }}</h2>
+                    <button class="fav-btn" data-pair="{{ pair }}" title="В избранное">☆</button>
+                </div>
                 <div class="spread-info">
                     <span class="spread-usd">Спред: {{ data.spread_usd|fmt }} USDT</span>
                     <span class="spread-pct">({{ "%.4f"|format(data.spread_pct) }}%)</span>
                     {% if data.net_profit_usdt > 0 %}
-                        <span class="net-profit profit-positive">✅ Прибыль: +{{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
+                        <span class="net-profit profit-positive">✅ +{{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
                     {% else %}
-                        <span class="net-profit profit-negative">❌ Прибыль: {{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
+                        <span class="net-profit profit-negative">❌ {{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
                     {% endif %}
                 </div>
                 <table>
-                    <thead>
-                        <tr><th>Биржа</th><th>Ask (купить)</th><th>Bid (продать)</th></tr>
-                    </thead>
+                    <thead><tr><th>Биржа</th><th>Ask</th><th>Bid</th></tr></thead>
                     <tbody>
                         {% for quote in quotes.get(pair, []) %}
                         <tr class="{% if quote.exchange == data.min_ask_exchange %}row-buy{% elif quote.exchange == data.max_bid_exchange %}row-sell{% endif %}">
@@ -93,9 +215,9 @@
                                 {% if quote.exchange == data.min_ask_exchange and quote.exchange == data.max_bid_exchange %}
                                     <span class="tag tag-both">купить и продать</span>
                                 {% elif quote.exchange == data.min_ask_exchange %}
-                                    <span class="tag tag-buy">← КУПИТЬ здесь</span>
+                                    <span class="tag tag-buy">← КУПИТЬ</span>
                                 {% elif quote.exchange == data.max_bid_exchange %}
-                                    <span class="tag tag-sell">← ПРОДАТЬ здесь</span>
+                                    <span class="tag tag-sell">← ПРОДАТЬ</span>
                                 {% endif %}
                             </td>
                             <td class="ask">{{ quote.ask|fmt }}</td>
@@ -105,28 +227,332 @@
                     </tbody>
                 </table>
                 <div class="action-hint">
-                    🟢 Купить на <b>{{ data.min_ask_exchange.upper() }}</b> по <b>{{ data.min_ask|fmt }}</b>
-                    &nbsp;→&nbsp;
-                    🔴 Продать на <b>{{ data.max_bid_exchange.upper() }}</b> по <b>{{ data.max_bid|fmt }}</b>
+                    🟢 <b>{{ data.min_ask_exchange.upper() }}</b> {{ data.min_ask|fmt }}
+                    <span class="arrow">→</span>
+                    🔴 <b>{{ data.max_bid_exchange.upper() }}</b> {{ data.max_bid|fmt }}
                 </div>
             </div>
             {% endfor %}
-        </main>
+        </div>
     </section>
     {% endif %}
 
     {% if not top_spreads and not spreads %}
-    <p>⏳ Ожидание данных от бирж... Подождите 15 секунд и обновите страницу.</p>
+    <p class="loading">⏳ Ожидание данных от бирж...</p>
     {% endif %}
 
-    <footer style="text-align: center; margin-top: 30px; color: #95a5a6; font-size: 0.85em;">
-        🔄 Автообновление каждые 15 секунд
-    </footer>
+    <p id="no-results" class="loading" style="display:none;">🔍 Ничего не найдено</p>
+</main>
 
-    <script>
-        setTimeout(function() {
-            window.location.reload();
-        }, 15000);
-    </script>
+<footer>
+    <div class="footer-content">
+        <span>💰 <b>АрбитражНВКЗ</b> © 2026</span>
+        <span class="sep">•</span>
+        <span>Автообновление 15 сек</span>
+        <span class="sep">•</span>
+        <span>Работает 24/7</span>
+    </div>
+</footer>
+
+<script>
+// ============ ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ (до отрисовки) ============
+(function() {
+    // Тема
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    // Фильтр, сортировка, поиск
+    const savedFilter = localStorage.getItem('filter') || 'all';
+    const savedSort = localStorage.getItem('sort') || 'percent';
+    const savedSearch = localStorage.getItem('search') || '';
+    const favorites = JSON.parse(localStorage.getItem('favorite_pairs') || '[]');
+
+    // Помечаем html-класс, чтобы CSS спрятал карточки до применения фильтров
+    document.documentElement.classList.add('filters-pending');
+
+    // Функция применяется после DOMContentLoaded
+    window.__applyInitialState = function() {
+        // Устанавливаем активные пункты меню
+        document.querySelectorAll('.filter-item').forEach(i => {
+            i.classList.toggle('active', i.dataset.filter === savedFilter);
+        });
+        document.querySelectorAll('.sort-item').forEach(i => {
+            i.classList.toggle('active', i.dataset.sort === savedSort);
+        });
+
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) searchInput.value = savedSearch;
+
+        window.__state = {
+            filter: savedFilter,
+            sort: savedSort,
+            search: savedSearch,
+            favorites: favorites
+        };
+
+        // Применяем фильтры (см. ниже)
+        if (window.__applyFilters) window.__applyFilters();
+
+        // Убираем блокировку отрисовки
+        document.documentElement.classList.remove('filters-pending');
+    };
+})();
+
+function updateThemeUI(theme) {
+    const icon = document.getElementById('theme-icon');
+    const iconSide = document.getElementById('theme-icon-side');
+    const labelSide = document.getElementById('theme-label-side');
+    if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+    if (iconSide) iconSide.textContent = theme === 'dark' ? '☀️' : '🌙';
+    if (labelSide) labelSide.textContent = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема';
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateThemeUI(next);
+}
+
+// ============ БОКОВОЕ МЕНЮ ============
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+
+function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    localStorage.setItem('sidebar_open', '1');
+}
+
+function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+    document.body.style.overflow = '';
+    localStorage.setItem('sidebar_open', '0');
+}
+
+document.getElementById('menu-toggle').addEventListener('click', openSidebar);
+document.getElementById('sidebar-close').addEventListener('click', closeSidebar);
+overlay.addEventListener('click', closeSidebar);
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSidebar();
+});
+
+document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+document.getElementById('nav-theme').addEventListener('click', function(e) {
+    e.preventDefault();
+    toggleTheme();
+});
+
+// ============ НАВИГАЦИЯ ПО СЕКЦИЯМ ============
+document.querySelectorAll('.nav-item[data-target]').forEach(item => {
+    item.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.dataset.target;
+        const target = document.getElementById(targetId);
+        if (target && target.style.display !== 'none') {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            target.classList.add('highlight-flash');
+            setTimeout(() => target.classList.remove('highlight-flash'), 1000);
+        }
+        closeSidebar();
+    });
+});
+
+// ============ СЧЁТЧИК ОБНОВЛЕНИЯ ============
+const pageLoadTime = Date.now();
+function updateCounter() {
+    const el = document.getElementById('update-counter');
+    if (!el) return;
+    const seconds = Math.floor((Date.now() - pageLoadTime) / 1000);
+    if (seconds < 5) el.textContent = 'Обновлено только что';
+    else if (seconds < 60) el.textContent = `Обновлено ${seconds} сек назад`;
+    else el.textContent = `Обновлено ${Math.floor(seconds / 60)} мин назад`;
+}
+setInterval(updateCounter, 1000);
+updateCounter();
+
+document.getElementById('nav-refresh').addEventListener('click', function(e) {
+    e.preventDefault();
+    window.location.reload();
+});
+
+// ============ ИЗБРАННОЕ ============
+const FAV_KEY = 'favorite_pairs';
+
+function getFavorites() {
+    try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }
+    catch (e) { return []; }
+}
+
+function saveFavorites(list) {
+    localStorage.setItem(FAV_KEY, JSON.stringify(list));
+}
+
+function updateStats() {
+    const total = document.querySelectorAll('.pair-card[data-pair]').length;
+    let profitCount = 0;
+    document.querySelectorAll('.pair-card[data-profit]').forEach(c => {
+        if (parseFloat(c.dataset.profit) > 0) profitCount++;
+    });
+    const favCount = getFavorites().length;
+    const elTotal = document.getElementById('stat-total');
+    const elProfit = document.getElementById('stat-profit');
+    const elFav = document.getElementById('stat-fav');
+    const elFavCount = document.getElementById('fav-count');
+    if (elTotal) elTotal.textContent = total;
+    if (elProfit) elProfit.textContent = profitCount;
+    if (elFav) elFav.textContent = favCount;
+    if (elFavCount) elFavCount.textContent = favCount;
+}
+
+function renderFavorites() {
+    const favorites = getFavorites();
+    const favSection = document.getElementById('favorites-section');
+    const favGrid = document.getElementById('favorites-grid');
+    favGrid.innerHTML = '';
+
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+        const isFav = favorites.includes(btn.dataset.pair);
+        btn.textContent = isFav ? '★' : '☆';
+        btn.classList.toggle('active', isFav);
+    });
+
+    if (favorites.length === 0) {
+        favSection.style.display = 'none';
+        updateStats();
+        return;
+    }
+
+    favSection.style.display = 'block';
+    const allCards = document.querySelectorAll('.pair-card[data-pair]');
+    allCards.forEach(card => {
+        if (favorites.includes(card.dataset.pair)) {
+            const clone = card.cloneNode(true);
+            favGrid.appendChild(clone);
+        }
+    });
+    bindFavButtons();
+    updateStats();
+}
+
+function bindFavButtons() {
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        newBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const pair = this.dataset.pair;
+            let favorites = getFavorites();
+            if (favorites.includes(pair)) {
+                favorites = favorites.filter(p => p !== pair);
+            } else {
+                favorites.push(pair);
+            }
+            saveFavorites(favorites);
+            renderFavorites();
+            if (window.__applyFilters) window.__applyFilters();
+        });
+    });
+}
+
+// ============ ФИЛЬТРЫ (с сохранением) ============
+function getState() {
+    return {
+        filter: localStorage.getItem('filter') || 'all',
+        sort: localStorage.getItem('sort') || 'percent',
+        search: localStorage.getItem('search') || ''
+    };
+}
+
+function applyFilters() {
+    const state = getState();
+    const cards = document.querySelectorAll('.pair-card[data-pair]');
+    const favorites = getFavorites();
+    const search = state.search.toLowerCase().trim();
+
+    let visible = 0;
+    cards.forEach(card => {
+        const pair = card.dataset.pair;
+        const profit = parseFloat(card.dataset.profit);
+        let show = true;
+
+        if (state.filter === 'profit' && profit <= 0) show = false;
+        if (state.filter === 'favorites' && !favorites.includes(pair)) show = false;
+        if (search && !pair.toLowerCase().includes(search)) show = false;
+
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    // Скрываем пустые секции
+    const secs = ['top-section', 'rest-section', 'favorites-section'];
+    secs.forEach(id => {
+        const sec = document.getElementById(id);
+        if (!sec) return;
+        if (sec.style.display === 'none') return;
+        const hasVisible = Array.from(sec.querySelectorAll('.pair-card[data-pair]'))
+            .some(c => c.style.display !== 'none');
+        sec.dataset.hadContent = sec.dataset.hadContent || '1';
+        sec.style.display = hasVisible ? '' : 'none';
+    });
+
+    document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+}
+
+window.__applyFilters = applyFilters;
+
+document.querySelectorAll('.filter-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.filter-item').forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+        localStorage.setItem('filter', this.dataset.filter);
+        applyFilters();
+        closeSidebar();
+    });
+});
+
+document.querySelectorAll('.sort-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.sort-item').forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+        localStorage.setItem('sort', this.dataset.sort);
+        closeSidebar();
+    });
+});
+
+// ============ ПОИСК ============
+document.getElementById('search-input').addEventListener('input', function() {
+    localStorage.setItem('search', this.value);
+    applyFilters();
+});
+
+// ============ СТАРТ ============
+document.addEventListener('DOMContentLoaded', function() {
+    updateThemeUI(document.documentElement.getAttribute('data-theme') || 'light');
+    renderFavorites();
+    bindFavButtons();
+    updateStats();
+
+    // Применяем сохранённое состояние ПОСЛЕ полной отрисовки DOM
+    if (window.__applyInitialState) window.__applyInitialState();
+
+    // Восстанавливаем открытое меню
+    if (localStorage.getItem('sidebar_open') === '1') {
+        sidebar.classList.add('open');
+        overlay.classList.add('show');
+        // Снимаем блокировку анимации через 100мс (после первой отрисовки)
+        setTimeout(() => {
+            document.documentElement.classList.remove('sidebar-restore');
+        }, 100);
+    }
+});
+
+setTimeout(() => window.location.reload(), 15000);
+</script>
 </body>
 </html>

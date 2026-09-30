@@ -473,8 +473,14 @@ async def read_root(request: Request):
         return (data.get("spread_pct", 0), data.get("spread_usd", 0))
 
     sorted_items = sorted(spreads_store.items(), key=sort_key, reverse=True)
-    top_10 = dict(sorted_items[:10])
-    rest = dict(sorted_items[10:])
+
+    # Топ-10: только ПРИБЫЛЬНЫЕ пары (net_profit > 0)
+    profitable = [(k, v) for k, v in sorted_items if v.get("net_profit_usdt", 0) > 0]
+    top_10 = dict(profitable[:10])
+    top_10_pairs = set(top_10.keys())
+
+    # Остальные: всё, что не попало в топ-10
+    rest = dict((k, v) for k, v in sorted_items if k not in top_10_pairs)
 
     return templates.TemplateResponse(
         request=request,
