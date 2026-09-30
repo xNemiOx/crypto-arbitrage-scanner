@@ -215,7 +215,10 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
                 mexc_pair = pair.replace("USDT", "_USDT")
                 url = f"https://contract.mexc.com/api/v1/contract/ticker?symbol={mexc_pair}"
                 r = await client.get(url, timeout=5)
-                data = r.json()["data"]
+                resp = r.json()
+                if not resp.get("success") or not resp.get("data"):
+                    return None
+                data = resp["data"]
                 return Quote(
                     exchange=exchange, pair=pair,
                     bid=float(data["bid1"]), ask=float(data["ask1"]),
@@ -233,6 +236,95 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
                     exchange=exchange, pair=pair,
                     bid=float(data["bid"][0]), ask=float(data["ask"][0]),
                     last=float(data["close"]), ts=int(time.time() * 1000),
+                )
+            elif exchange == "bingx":
+                bingx_pair = pair.replace("USDT", "-USDT")
+                url = f"https://open-api.bingx.com/openApi/swap/v2/quote/ticker?symbol={bingx_pair}"
+                r = await client.get(url, timeout=5)
+                data = r.json()["data"]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bidPrice"]), ask=float(data["askPrice"]),
+                    last=float(data.get("lastPrice") or 0) or None,
+                    ts=int(time.time() * 1000),
+                )
+
+            elif exchange == "bitget":
+                url = f"https://api.bitget.com/api/v2/mix/market/ticker?productType=USDT-FUTURES&symbol={pair}"
+                r = await client.get(url, timeout=5)
+                data = r.json()["data"][0]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bidPr"]), ask=float(data["askPr"]),
+                    last=float(data["lastPr"]), ts=int(time.time() * 1000),
+                )
+
+            elif exchange == "coinex":
+                url = f"https://api.coinex.com/v2/futures/ticker?market={pair}"
+                r = await client.get(url, timeout=5)
+                data = r.json()["data"][0]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bid"]), ask=float(data["ask"]),
+                    last=float(data["last"]), ts=int(time.time() * 1000),
+                )
+
+            elif exchange == "phemex":
+                url = f"https://api.phemex.com/md/v1/ticker/24hr?symbol={pair}"
+                r = await client.get(url, timeout=5)
+                data = r.json()["result"]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bidRp"]), ask=float(data["askRp"]),
+                    last=float(data["lastEp"]), ts=int(time.time() * 1000),
+                )
+
+            elif exchange == "bitrue":
+                url = f"https://fapi.bitrue.com/fapi/v1/ticker/bookTicker?symbol={pair}"
+                r = await client.get(url, timeout=5)
+                data = r.json()
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bidPrice"]), ask=float(data["askPrice"]),
+                    last=None, ts=int(time.time() * 1000),
+                )
+
+            elif exchange == "toobit":
+                toobit_pair = pair.replace("USDT", "-SWAP-USDT")
+                url = f"https://api.toobit.com/api/v1/futures/market/ticker?symbol={toobit_pair}"
+                r = await client.get(url, timeout=5)
+                data = r.json()["data"]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bidPrice"]), ask=float(data["askPrice"]),
+                    last=float(data["lastPrice"]), ts=int(time.time() * 1000),
+                )
+
+            elif exchange == "deribit":
+                if pair == "BTCUSDT":
+                    instrument = "BTC-PERPETUAL"
+                elif pair == "ETHUSDT":
+                    instrument = "ETH-PERPETUAL"
+                else:
+                    return None
+                payload = {"jsonrpc": "2.0", "id": 1, "method": "public/ticker", "params": {"instrument_name": instrument}}
+                r = await client.post("https://www.deribit.com/api/v2/public/ticker", json=payload, timeout=5)
+                data = r.json()["result"]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["best_bid_price"]), ask=float(data["best_ask_price"]),
+                    last=float(data["last_price"]), ts=int(time.time() * 1000),
+                )
+
+            elif exchange == "coinw":
+                coinw_pair = pair.replace("USDT", "_USDT")
+                url = f"https://api.coinw.com/v1/perpumPublic/tickers?symbol={coinw_pair}"
+                r = await client.get(url, timeout=5)
+                data = r.json()["data"][0]
+                return Quote(
+                    exchange=exchange, pair=pair,
+                    bid=float(data["bid"]), ask=float(data["ask"]),
+                    last=float(data["last"]), ts=int(time.time() * 1000),
                 )
 
             else:
