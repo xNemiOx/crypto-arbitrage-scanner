@@ -536,11 +536,18 @@ async def fetch_and_store(exchange: str, pair: str):
 
 
 async def data_collector():
+    # Ограничиваем параллелизм: не более 10 одновременных запросов
+    semaphore = asyncio.Semaphore(10)
+
+    async def fetch_limited(exchange, pair):
+        async with semaphore:
+            return await fetch_and_store(exchange, pair)
+
     while True:
         tasks = []
         for pair in PAIRS:
             for ex in EXCHANGES:
-                tasks.append(fetch_and_store(ex, pair))
+                tasks.append(fetch_limited(ex, pair))
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
             compute_spreads_and_alerts(quotes_store)
