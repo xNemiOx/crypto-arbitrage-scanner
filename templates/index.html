@@ -11,33 +11,28 @@
         <h1>🚀 Арбитражный сканер</h1>
         <p>Данные обновляются в реальном времени</p>
     </header>
-    <main>
-        {% if spreads %}
-            {% for pair, data in spreads.items() %}
-            <div class="pair-card">
+
+    {% if top_spreads %}
+    <section class="top-section">
+        <h2 class="top-title">🔥 Топ-10 возможностей</h2>
+        <p class="top-subtitle">Наибольший спред между биржами прямо сейчас</p>
+        <main class="top-grid">
+            {% for pair, data in top_spreads.items() %}
+            <div class="pair-card top-card">
                 <h2>{{ pair }}</h2>
                 <div class="spread-info">
-                    <span class="spread-usd">Спред: {{ data.spread_usd }} USDT</span>
-                    <span class="spread-pct">({{ data.spread_pct }}%)</span>
+                    <span class="spread-usd">Спред: {{ data.spread_usd|fmt }} USDT</span>
+                    <span class="spread-pct">({{ "%.4f"|format(data.spread_pct) }}%)</span>
                     {% if data.net_profit_usdt > 0 %}
-                        <span class="net-profit profit-positive">✅ Чистая прибыль: +{{ data.net_profit_usdt }} USDT</span>
+                        <span class="net-profit profit-positive">✅ Прибыль: +{{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
                     {% else %}
-                        <span class="net-profit profit-negative">❌ Чистая прибыль: {{ data.net_profit_usdt }} USDT</span>
+                        <span class="net-profit profit-negative">❌ Прибыль: {{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
                     {% endif %}
-                </div>
-
-                <div class="legend">
-                    <span class="legend-item"><span class="dot dot-buy"></span> Лучшая цена покупки</span>
-                    <span class="legend-item"><span class="dot dot-sell"></span> Лучшая цена продажи</span>
                 </div>
 
                 <table>
                     <thead>
-                        <tr>
-                            <th>Биржа</th>
-                            <th>Ask (купить)</th>
-                            <th>Bid (продать)</th>
-                        </tr>
+                        <tr><th>Биржа</th><th>Ask (купить)</th><th>Bid (продать)</th></tr>
                     </thead>
                     <tbody>
                         {% for quote in quotes.get(pair, []) %}
@@ -52,24 +47,77 @@
                                     <span class="tag tag-sell">← ПРОДАТЬ здесь</span>
                                 {% endif %}
                             </td>
-                            <td class="ask">{{ quote.ask }}</td>
-                            <td class="bid">{{ quote.bid }}</td>
+                            <td class="ask">{{ quote.ask|fmt }}</td>
+                            <td class="bid">{{ quote.bid|fmt }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
 
                 <div class="action-hint">
-                    🟢 Купить на <b>{{ data.min_ask_exchange.upper() }}</b> по <b>{{ data.min_ask }}</b>
+                    🟢 Купить на <b>{{ data.min_ask_exchange.upper() }}</b> по <b>{{ data.min_ask|fmt }}</b>
                     &nbsp;→&nbsp;
-                    🔴 Продать на <b>{{ data.max_bid_exchange.upper() }}</b> по <b>{{ data.max_bid }}</b>
+                    🔴 Продать на <b>{{ data.max_bid_exchange.upper() }}</b> по <b>{{ data.max_bid|fmt }}</b>
                 </div>
             </div>
             {% endfor %}
-        {% else %}
-            <p>⏳ Ожидание данных от бирж... Подождите 10-15 секунд и обновите страницу.</p>
-        {% endif %}
-    </main>
+        </main>
+    </section>
+    {% endif %}
+
+    {% if spreads %}
+    <section class="rest-section">
+        <h2 class="rest-title">📊 Остальные пары</h2>
+        <main class="rest-grid">
+            {% for pair, data in spreads.items() %}
+            <div class="pair-card">
+                <h2>{{ pair }}</h2>
+                <div class="spread-info">
+                    <span class="spread-usd">Спред: {{ data.spread_usd|fmt }} USDT</span>
+                    <span class="spread-pct">({{ "%.4f"|format(data.spread_pct) }}%)</span>
+                    {% if data.net_profit_usdt > 0 %}
+                        <span class="net-profit profit-positive">✅ Прибыль: +{{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
+                    {% else %}
+                        <span class="net-profit profit-negative">❌ Прибыль: {{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
+                    {% endif %}
+                </div>
+                <table>
+                    <thead>
+                        <tr><th>Биржа</th><th>Ask (купить)</th><th>Bid (продать)</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for quote in quotes.get(pair, []) %}
+                        <tr class="{% if quote.exchange == data.min_ask_exchange %}row-buy{% elif quote.exchange == data.max_bid_exchange %}row-sell{% endif %}">
+                            <td>
+                                {{ quote.exchange }}
+                                {% if quote.exchange == data.min_ask_exchange and quote.exchange == data.max_bid_exchange %}
+                                    <span class="tag tag-both">купить и продать</span>
+                                {% elif quote.exchange == data.min_ask_exchange %}
+                                    <span class="tag tag-buy">← КУПИТЬ здесь</span>
+                                {% elif quote.exchange == data.max_bid_exchange %}
+                                    <span class="tag tag-sell">← ПРОДАТЬ здесь</span>
+                                {% endif %}
+                            </td>
+                            <td class="ask">{{ quote.ask|fmt }}</td>
+                            <td class="bid">{{ quote.bid|fmt }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="action-hint">
+                    🟢 Купить на <b>{{ data.min_ask_exchange.upper() }}</b> по <b>{{ data.min_ask|fmt }}</b>
+                    &nbsp;→&nbsp;
+                    🔴 Продать на <b>{{ data.max_bid_exchange.upper() }}</b> по <b>{{ data.max_bid|fmt }}</b>
+                </div>
+            </div>
+            {% endfor %}
+        </main>
+    </section>
+    {% endif %}
+
+    {% if not top_spreads and not spreads %}
+    <p>⏳ Ожидание данных от бирж... Подождите 15 секунд и обновите страницу.</p>
+    {% endif %}
 
     <footer style="text-align: center; margin-top: 30px; color: #95a5a6; font-size: 0.85em;">
         🔄 Автообновление каждые 15 секунд

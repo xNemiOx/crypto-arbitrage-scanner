@@ -21,6 +21,30 @@ app = FastAPI(title="Crypto Arbitrage Scanner")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+
+def fmt_price(v):
+    """Форматирует число красиво: без e-нотации, с разумным округлением."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return str(v)
+    if v == 0:
+        return "0"
+    av = abs(v)
+    if av >= 1000:
+        return f"{v:,.2f}"
+    elif av >= 1:
+        return f"{v:.4f}"
+    elif av >= 0.01:
+        return f"{v:.6f}"
+    elif av >= 0.0001:
+        return f"{v:.8f}"
+    else:
+        return f"{v:.10f}"
+
+
+templates.env.filters["fmt"] = fmt_price
+
 CONFIG_PATH = "config.yaml"
 
 
@@ -179,9 +203,12 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
                 url = f"https://fapi.binance.com/fapi/v1/ticker/bookTicker?symbol={binance_pair}"
                 r = await client.get(url, timeout=5)
                 data = r.json()
+                # Для 1000-prefix пар делим цену на 1000, чтобы привести к единой шкале
+                divisor = 1000.0 if pair in binance_special else 1.0
                 return Quote(
                     exchange=exchange, pair=pair,
-                    bid=float(data["bidPrice"]), ask=float(data["askPrice"]),
+                    bid=float(data["bidPrice"]) / divisor,
+                    ask=float(data["askPrice"]) / divisor,
                     last=None, ts=int(time.time() * 1000),
                 )
 
@@ -426,9 +453,7 @@ def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote
 # =========================================================
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    # Перестраиваем данные в удобный для шаблона вид:
-    # было: {("binance", "BTCUSDT"): Quote}
-    # станет: {"BTCUSDT": [ {exchange, bid, ask}, ... ]}
+    # Перестраиваем данные в удобный для шаблона вид
     quotes_by_pair = {}
     for (ex, pair), q in quotes_store.items():
         quotes_by_pair.setdefault(pair, []).append({
@@ -439,12 +464,22 @@ async def read_root(request: Request):
             "ts": q.ts,
         })
 
+    # Сортируем по спреду в ПРОЦЕНТАХ (от большего к меньшему)
+    def sort_key(item):
+        data = item[1]
+        return (data.get("spread_pct", 0), data.get("spread_usd", 0))
+
+    sorted_items = sorted(spreads_store.items(), key=sort_key, reverse=True)
+    top_10 = dict(sorted_items[:10])
+    rest = dict(sorted_items[10:])
+
     return templates.TemplateResponse(
         request=request,
         name="index.html",
         context={
             "quotes": quotes_by_pair,
-            "spreads": spreads_store,
+            "top_spreads": top_10,
+            "spreads": rest,
         }
     )
 
