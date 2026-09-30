@@ -166,7 +166,17 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
         async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0"}, timeout=10) as client:
             # --- BINANCE USDT-M FUTURES ---
             if exchange == "binance":
-                url = f"https://fapi.binance.com/fapi/v1/ticker/bookTicker?symbol={pair}"
+                # Binance использует 1000-префикс для мелких монет
+                binance_special = {
+                    "SHIBUSDT": "1000SHIBUSDT", "PEPEUSDT": "1000PEPEUSDT",
+                    "RNDRUSDT": "1000RNDRUSDT", "FLOKIUSDT": "1000FLOKIUSDT",
+                    "BONKUSDT": "1000BONKUSDT", "LUNCUSDT": "1000LUNCUSDT",
+                    "XECUSDT": "1000XECUSDT", "SATSUSDT": "1000SATSUSDT",
+                    "RATSUSDT": "1000RATSUSDT", "CATUSDT": "1000CATUSDT",
+                    "XUSDT": "1000XUSDT", "CHEEMSUSDT": "1000CHEEMSUSDT",
+                }
+                binance_pair = binance_special.get(pair, pair)
+                url = f"https://fapi.binance.com/fapi/v1/ticker/bookTicker?symbol={binance_pair}"
                 r = await client.get(url, timeout=5)
                 data = r.json()
                 return Quote(
