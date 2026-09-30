@@ -428,7 +428,7 @@ def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote
         if pair in last_alert_time and (current_time - last_alert_time[pair]) < 300:
             continue
 
-        if (spread_usd >= ALERT_USD or spread_pct >= ALERT_PCT) and net_profit > 0:
+        if spread_pct >= ALERT_PCT and net_profit > 0:
             buy_link = get_trade_link(min_ask_exchange, pair)
             sell_link = get_trade_link(max_bid_exchange, pair)
 
