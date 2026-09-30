@@ -47,6 +47,20 @@ templates.env.filters["fmt"] = fmt_price
 
 CONFIG_PATH = "config.yaml"
 
+# Глобальный httpx-клиент для переиспользования соединений (экономит RAM)
+GLOBAL_HTTP_CLIENT: httpx.AsyncClient = None
+
+async def get_http_client() -> httpx.AsyncClient:
+    global GLOBAL_HTTP_CLIENT
+    if GLOBAL_HTTP_CLIENT is None:
+        GLOBAL_HTTP_CLIENT = httpx.AsyncClient(
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=httpx.Timeout(10.0, connect=5.0),
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+        )
+    return GLOBAL_HTTP_CLIENT
+
+
 
 # =========================================================
 # 2. ЗАГРУЗКА КОНФИГУРАЦИИ
@@ -187,7 +201,8 @@ async def fetch_from_exchange(exchange: str, pair: str) -> Optional[Quote]:
         return mock_quote(exchange, pair)
 
     try:
-        async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0"}, timeout=10) as client:
+        client = await get_http_client()
+        if True:
             # --- BINANCE USDT-M FUTURES ---
             if exchange == "binance":
                 # Binance использует 1000-префикс для мелких монет
@@ -489,6 +504,8 @@ async def read_root(request: Request):
             "quotes": quotes_by_pair,
             "top_spreads": top_10,
             "spreads": rest,
+            "pairs_count": len(PAIRS),
+            "exchanges_count": len(EXCHANGES),
         }
     )
 
@@ -566,7 +583,17 @@ async def data_collector():
 @app.on_event("startup")
 async def startup_event():
     print(">>> Запуск фонового сборщика данных...")
+    await get_http_client()  # создаём клиент заранее
     asyncio.create_task(data_collector())
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    global GLOBAL_HTTP_CLIENT
+    if GLOBAL_HTTP_CLIENT is not None:
+        await GLOBAL_HTTP_CLIENT.aclose()
+        GLOBAL_HTTP_CLIENT = None
+        print(">>> HTTP-клиент закрыт")
 
 
 if __name__ == "__main__":

@@ -112,9 +112,9 @@
             <span class="live-dot"></span>
             <span>LIVE</span>
             <span class="sep">•</span>
-            <span>9 бирж</span>
+            <span>{{ exchanges_count|default(9) }} бирж</span>
             <span class="sep">•</span>
-            <span>50 пар</span>
+            <span>{{ pairs_count|default(0) }} пар</span>
         </div>
         <div class="header-meta update-info">
             <span>🔄</span>
