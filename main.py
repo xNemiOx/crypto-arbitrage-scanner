@@ -651,6 +651,54 @@ def api_spot_quotes():
     return payload
 
 
+@app.get("/api/render")
+async def api_render(request: Request):
+    """Возвращает JSON с готовым HTML карточек — для AJAX-обновления."""
+    # === ФЬЮЧЕРСЫ ===
+    quotes_by_pair = {}
+    for (ex, pair), q in quotes_store.items():
+        quotes_by_pair.setdefault(pair, []).append({
+            "exchange": ex, "bid": q.bid, "ask": q.ask, "last": q.last, "ts": q.ts,
+        })
+
+    def sort_key(item):
+        data = item[1]
+        return (data.get("spread_pct", 0), data.get("spread_usd", 0))
+
+    sorted_items = sorted(spreads_store.items(), key=sort_key, reverse=True)
+    profitable = [(k, v) for k, v in sorted_items if v.get("net_profit_usdt", 0) > 0]
+    top_10 = dict(profitable[:10])
+    top_10_pairs = set(top_10.keys())
+    rest = dict((k, v) for k, v in sorted_items if k not in top_10_pairs)
+
+    futures_html = templates.get_template("_futures.html").render(
+        quotes=quotes_by_pair, top_spreads=top_10, spreads=rest,
+    )
+
+    # === СПОТ ===
+    spot_quotes_by_pair = {}
+    for (ex, pair), q in spot_quotes_store.items():
+        spot_quotes_by_pair.setdefault(pair, []).append({
+            "exchange": ex, "bid": q.bid, "ask": q.ask, "last": q.last, "ts": q.ts,
+        })
+
+    spot_sorted = sorted(spot_spreads_store.items(), key=sort_key, reverse=True)
+    spot_profitable = [(k, v) for k, v in spot_sorted if v.get("net_profit_usdt", 0) > 0]
+    spot_top_10 = dict(spot_profitable[:10])
+    spot_top_10_pairs = set(spot_top_10.keys())
+    spot_rest = dict((k, v) for k, v in spot_sorted if k not in spot_top_10_pairs)
+
+    spot_html = templates.get_template("_spot.html").render(
+        spot_quotes=spot_quotes_by_pair, spot_top_spreads=spot_top_10, spot_spreads=spot_rest,
+    )
+
+    return {
+        "futures": futures_html,
+        "spot": spot_html,
+        "pairs_count": len(PAIRS),
+    }
+
+
 @app.get("/spot_spreads")
 def api_spot_spreads():
     """Спот-спреды."""

@@ -112,226 +112,15 @@
 
     <!-- ============ ФЬЮЧЕРСЫ ============ -->
     <div id="tab-futures" class="tab-content active">
-
-        <section id="favorites-section" class="favorites-section" style="display:none;">
-            <h2 class="favorites-title">⭐ Избранное</h2>
-            <div class="grid-2" id="favorites-grid"></div>
-        </section>
-
-        {% if top_spreads %}
-        <section class="top-section" id="top-section">
-            <h2 class="top-title">🔥 Топ-10 возможностей</h2>
-            <p class="top-subtitle">Наибольший процентный спред</p>
-            <div class="grid-2" id="top-grid">
-                {% for pair, data in top_spreads.items() %}
-                <div class="pair-card top-card" data-pair="{{ pair }}" data-profit="{{ data.net_profit_usdt }}">
-                    <div class="card-header">
-                        <h2>{{ pair }}</h2>
-                        <button class="fav-btn" data-pair="{{ pair }}">☆</button>
-                    </div>
-                    <div class="spread-info">
-                        <span class="spread-usd">Спред: {{ data.spread_usd|fmt }} USDT</span>
-                        <span class="spread-pct">({{ "%.4f"|format(data.spread_pct) }}%)</span>
-                        {% if data.net_profit_usdt > 0 %}
-                            <span class="net-profit profit-positive">✅ +{{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
-                        {% else %}
-                            <span class="net-profit profit-negative">❌ {{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
-                        {% endif %}
-                    </div>
-                    <table>
-                        <thead><tr><th>Биржа</th><th>Ask</th><th>Bid</th></tr></thead>
-                        <tbody>
-                            {% for quote in quotes.get(pair, []) %}
-                            <tr class="{% if quote.exchange == data.min_ask_exchange %}row-buy{% elif quote.exchange == data.max_bid_exchange %}row-sell{% endif %}">
-                                <td>
-                                    {{ quote.exchange }}
-                                    {% if quote.exchange == data.min_ask_exchange and quote.exchange == data.max_bid_exchange %}
-                                        <span class="tag tag-both">обе</span>
-                                    {% elif quote.exchange == data.min_ask_exchange %}
-                                        <a href="{{ data.buy_url }}" target="_blank" class="tag tag-buy" title="Открыть на {{ data.min_ask_exchange.upper() }}">← КУПИТЬ</a>
-                                    {% elif quote.exchange == data.max_bid_exchange %}
-                                        <a href="{{ data.sell_url }}" target="_blank" class="tag tag-sell" title="Открыть на {{ data.max_bid_exchange.upper() }}">← ПРОДАТЬ</a>
-                                    {% endif %}
-                                </td>
-                                <td class="ask">{{ quote.ask|fmt }}</td>
-                                <td class="bid">{{ quote.bid|fmt }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    <div class="action-hint">
-                        🟢 <b>{{ data.min_ask_exchange.upper() }}</b> {{ data.min_ask|fmt }}
-                        <span class="arrow">→</span>
-                        🔴 <b>{{ data.max_bid_exchange.upper() }}</b> {{ data.max_bid|fmt }}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </section>
-        {% endif %}
-
-        {% if spreads %}
-        <section class="rest-section" id="rest-section">
-            <h2 class="rest-title">📊 Остальные пары</h2>
-            <div class="grid-2" id="rest-grid">
-                {% for pair, data in spreads.items() %}
-                <div class="pair-card" data-pair="{{ pair }}" data-profit="{{ data.net_profit_usdt }}">
-                    <div class="card-header">
-                        <h2>{{ pair }}</h2>
-                        <button class="fav-btn" data-pair="{{ pair }}">☆</button>
-                    </div>
-                    <div class="spread-info">
-                        <span class="spread-usd">Спред: {{ data.spread_usd|fmt }} USDT</span>
-                        <span class="spread-pct">({{ "%.4f"|format(data.spread_pct) }}%)</span>
-                        {% if data.net_profit_usdt > 0 %}
-                            <span class="net-profit profit-positive">✅ +{{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
-                        {% else %}
-                            <span class="net-profit profit-negative">❌ {{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
-                        {% endif %}
-                    </div>
-                    <table>
-                        <thead><tr><th>Биржа</th><th>Ask</th><th>Bid</th></tr></thead>
-                        <tbody>
-                            {% for quote in quotes.get(pair, []) %}
-                            <tr class="{% if quote.exchange == data.min_ask_exchange %}row-buy{% elif quote.exchange == data.max_bid_exchange %}row-sell{% endif %}">
-                                <td>
-                                    {{ quote.exchange }}
-                                    {% if quote.exchange == data.min_ask_exchange and quote.exchange == data.max_bid_exchange %}
-                                        <span class="tag tag-both">обе</span>
-                                    {% elif quote.exchange == data.min_ask_exchange %}
-                                        <a href="{{ data.buy_url }}" target="_blank" class="tag tag-buy" title="Открыть на {{ data.min_ask_exchange.upper() }}">← КУПИТЬ</a>
-                                    {% elif quote.exchange == data.max_bid_exchange %}
-                                        <a href="{{ data.sell_url }}" target="_blank" class="tag tag-sell" title="Открыть на {{ data.max_bid_exchange.upper() }}">← ПРОДАТЬ</a>
-                                    {% endif %}
-                                </td>
-                                <td class="ask">{{ quote.ask|fmt }}</td>
-                                <td class="bid">{{ quote.bid|fmt }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    <div class="action-hint">
-                        🟢 <b>{{ data.min_ask_exchange.upper() }}</b> {{ data.min_ask|fmt }}
-                        <span class="arrow">→</span>
-                        🔴 <b>{{ data.max_bid_exchange.upper() }}</b> {{ data.max_bid|fmt }}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </section>
-        {% endif %}
+        {% include "_futures.html" %}
     </div>
 
-    <!-- ============ СПОТ ============ -->
+    
     <div id="tab-spot" class="tab-content">
-
-        <section id="favorites-section-spot" class="favorites-section" style="display:none;">
-            <h2 class="favorites-title">⭐ Избранное (Спот)</h2>
-            <p class="favorites-subtitle">Твои отслеживаемые спот-пары</p>
-            <div class="grid-2" id="favorites-grid-spot"></div>
-        </section>
-
-        {% if spot_top_spreads %}
-        <section class="top-section">
-            <h2 class="top-title">💵 Топ-10 спот-возможностей</h2>
-            <p class="top-subtitle">Наибольший процентный спред (спот)</p>
-            <div class="grid-2">
-                {% for pair, data in spot_top_spreads.items() %}
-                <div class="pair-card top-card spot-card" data-pair="{{ pair }}" data-profit="{{ data.net_profit_usdt }}">
-                    <div class="card-header">
-                        <h2>{{ pair }} <span class="spot-badge">SPOT</span></h2>
-                        <button class="fav-btn" data-pair="{{ pair }}">☆</button>
-                    </div>
-                    <div class="spread-info">
-                        <span class="spread-usd">Спред: {{ data.spread_usd|fmt }} USDT</span>
-                        <span class="spread-pct">({{ "%.4f"|format(data.spread_pct) }}%)</span>
-                        {% if data.net_profit_usdt > 0 %}
-                            <span class="net-profit profit-positive">✅ +{{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
-                        {% else %}
-                            <span class="net-profit profit-negative">❌ {{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
-                        {% endif %}
-                    </div>
-                    <table>
-                        <thead><tr><th>Биржа</th><th>Ask</th><th>Bid</th></tr></thead>
-                        <tbody>
-                            {% for quote in spot_quotes.get(pair, []) %}
-                            <tr class="{% if quote.exchange == data.min_ask_exchange %}row-buy{% elif quote.exchange == data.max_bid_exchange %}row-sell{% endif %}">
-                                <td>
-                                    {{ quote.exchange }}
-                                    {% if quote.exchange == data.min_ask_exchange %}
-                                        <a href="{{ data.buy_url }}" target="_blank" class="tag tag-buy" title="Открыть на {{ data.min_ask_exchange.upper() }}">← КУПИТЬ</a>
-                                    {% elif quote.exchange == data.max_bid_exchange %}
-                                        <a href="{{ data.sell_url }}" target="_blank" class="tag tag-sell" title="Открыть на {{ data.max_bid_exchange.upper() }}">← ПРОДАТЬ</a>
-                                    {% endif %}
-                                </td>
-                                <td class="ask">{{ quote.ask|fmt }}</td>
-                                <td class="bid">{{ quote.bid|fmt }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    <div class="action-hint">
-                        🟢 <b>{{ data.min_ask_exchange.upper() }}</b> {{ data.min_ask|fmt }}
-                        <span class="arrow">→</span>
-                        🔴 <b>{{ data.max_bid_exchange.upper() }}</b> {{ data.max_bid|fmt }}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </section>
-        {% endif %}
-
-        {% if spot_spreads %}
-        <section class="rest-section">
-            <h2 class="rest-title">📊 Остальные спот-пары</h2>
-            <div class="grid-2">
-                {% for pair, data in spot_spreads.items() %}
-                <div class="pair-card spot-card" data-pair="{{ pair }}" data-profit="{{ data.net_profit_usdt }}">
-                    <div class="card-header">
-                        <h2>{{ pair }} <span class="spot-badge">SPOT</span></h2>
-                        <button class="fav-btn" data-pair="{{ pair }}">☆</button>
-                    </div>
-                    <div class="spread-info">
-                        <span class="spread-usd">Спред: {{ data.spread_usd|fmt }} USDT</span>
-                        <span class="spread-pct">({{ "%.4f"|format(data.spread_pct) }}%)</span>
-                        {% if data.net_profit_usdt > 0 %}
-                            <span class="net-profit profit-positive">✅ +{{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
-                        {% else %}
-                            <span class="net-profit profit-negative">❌ {{ "%.2f"|format(data.net_profit_usdt) }} USDT</span>
-                        {% endif %}
-                    </div>
-                    <table>
-                        <thead><tr><th>Биржа</th><th>Ask</th><th>Bid</th></tr></thead>
-                        <tbody>
-                            {% for quote in spot_quotes.get(pair, []) %}
-                            <tr class="{% if quote.exchange == data.min_ask_exchange %}row-buy{% elif quote.exchange == data.max_bid_exchange %}row-sell{% endif %}">
-                                <td>
-                                    {{ quote.exchange }}
-                                    {% if quote.exchange == data.min_ask_exchange %}
-                                        <a href="{{ data.buy_url }}" target="_blank" class="tag tag-buy" title="Открыть на {{ data.min_ask_exchange.upper() }}">← КУПИТЬ</a>
-                                    {% elif quote.exchange == data.max_bid_exchange %}
-                                        <a href="{{ data.sell_url }}" target="_blank" class="tag tag-sell" title="Открыть на {{ data.max_bid_exchange.upper() }}">← ПРОДАТЬ</a>
-                                    {% endif %}
-                                </td>
-                                <td class="ask">{{ quote.ask|fmt }}</td>
-                                <td class="bid">{{ quote.bid|fmt }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    <div class="action-hint">
-                        🟢 <b>{{ data.min_ask_exchange.upper() }}</b> {{ data.min_ask|fmt }}
-                        <span class="arrow">→</span>
-                        🔴 <b>{{ data.max_bid_exchange.upper() }}</b> {{ data.max_bid|fmt }}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </section>
-        {% endif %}
+        {% include "_spot.html" %}
     </div>
 
-    <p id="no-results" class="loading" style="display:none;">🔍 Ничего не найдено</p>
+     class="loading" style="display:none;">🔍 Ничего не найдено</p>
 </main>
 
 <footer>
@@ -408,7 +197,7 @@ function initApp() {
     }
 
     // ===== СЧЁТЧИК =====
-    var pageLoadTime = Date.now();
+    let pageLoadTime = Date.now();
     function updateCounter() {
         var el = document.getElementById('update-counter');
         if (!el) return;
@@ -639,7 +428,35 @@ function initApp() {
     // ===== СТАРТ =====
     activateTab(window.__initialTab || 'futures');
 
-    setTimeout(function() { window.location.reload(); }, 15000);
+    // ===== AJAX-АВТООБНОВЛЕНИЕ =====
+    async function refreshFromServer() {
+        try {
+            const resp = await fetch('/api/render', { cache: 'no-store' });
+            if (!resp.ok) return;
+            const data = await resp.json();
+
+            const tf = document.getElementById('tab-futures');
+            const ts = document.getElementById('tab-spot');
+            const activeTab = localStorage.getItem('active_tab') || 'futures';
+            const scrollY = window.scrollY;
+
+            if (tf) tf.innerHTML = data.futures;
+            if (ts) ts.innerHTML = data.spot;
+
+            pageLoadTime = Date.now();
+
+            renderFavorites(getActiveTab());
+            applyFilters();
+            updateStats();
+            activateTab(activeTab);
+
+            window.scrollTo(0, scrollY);
+        } catch (e) {
+            console.error('Refresh error:', e);
+        }
+    }
+
+    setInterval(refreshFromServer, 30000);
 }
 
 if (document.readyState === 'loading') {
