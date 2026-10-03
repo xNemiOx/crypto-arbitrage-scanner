@@ -161,18 +161,66 @@ EXCHANGE_FEES = {
 
 
 def get_trade_link(exchange: str, pair: str) -> str:
-    """Генерирует ссылку на страницу торгов для конкретной пары и биржи."""
+    """Ссылка на ФЬЮЧЕРСНУЮ страницу торгов."""
     if exchange == "binance":
-        return f"https://www.binance.com/en/trade/{pair}"
+        return f"https://www.binance.com/en/futures/{pair}"
     elif exchange == "bybit":
-        return f"https://www.bybit.com/trade/spot/{pair}"
+        return f"https://www.bybit.com/trade/usdt/{pair}"
     elif exchange == "okx":
-        okx_pair = pair.replace("USDT", "-USDT")
-        return f"https://www.okx.com/trade-spot/{okx_pair.lower()}"
+        okx_pair = pair.replace("USDT", "-USDT-SWAP")
+        return f"https://www.okx.com/trade-swap/{okx_pair.lower()}"
     elif exchange == "gateio":
         gate_pair = pair.replace("USDT", "_USDT")
+        return f"https://www.gate.io/futures/USDT/{gate_pair}"
+    elif exchange == "mexc":
+        # MEXC блокирует прямые ссылки — ведём через Google поиск
+        base = pair.replace("USDT", "")
+        return f"https://www.google.com/search?q=mexc+futures+{base}+usdt+trade"
+    elif exchange == "htx":
+        htx_pair = pair.replace("USDT", "-USDT")
+        return f"https://www.htx.com/futures/linear_swap/exchange#contract_code={htx_pair}&type=swap"
+    elif exchange == "bingx":
+        bingx_pair = pair.replace("USDT", "-USDT")
+        return f"https://bingx.com/en-us/perpetual/{bingx_pair}/"
+    elif exchange == "bitget":
+        return f"https://www.bitget.com/futures/usdt/{pair}"
+    elif exchange == "deribit":
+        if pair == "BTCUSDT":
+            return "https://www.deribit.com/futures/BTC-PERPETUAL"
+        elif pair == "ETHUSDT":
+            return "https://www.deribit.com/futures/ETH-PERPETUAL"
+        return "https://www.deribit.com/futures"
+    return f"https://www.google.com/search?q={exchange}+{pair}"
+
+
+def get_spot_trade_link(exchange: str, pair: str) -> str:
+    """Ссылка на СПОТ-страницу торгов."""
+    base = pair.replace("USDT", "")
+    if exchange == "binance":
+        spot_pair = pair.replace("USDT", "_USDT")  # BTC_USDT
+        return f"https://www.binance.com/en/trade/{spot_pair}"
+    elif exchange == "bybit":
+        spot_pair = pair.replace("USDT", "/USDT")  # BTC/USDT
+        return f"https://www.bybit.com/en/trade/spot/{spot_pair}"
+    elif exchange == "okx":
+        okx_pair = pair.replace("USDT", "-USDT")  # BTC-USDT
+        return f"https://www.okx.com/trade-spot/{okx_pair.lower()}"
+    elif exchange == "gateio":
+        gate_pair = pair.replace("USDT", "_USDT")  # BTC_USDT
         return f"https://www.gate.io/trade/{gate_pair}"
-    return "#"
+    elif exchange == "mexc":
+        # MEXC блокирует прямые ссылки — ведём через Google поиск
+        base = pair.replace("USDT", "")
+        return f"https://www.google.com/search?q=mexc+{base}+usdt+spot+trade"
+    elif exchange == "htx":
+        htx_pair = pair.lower()  # btcusdt
+        return f"https://www.htx.com/trade/{htx_pair}"
+    elif exchange == "bingx":
+        bingx_pair = pair.replace("USDT", "-USDT")  # BTC-USDT
+        return f"https://bingx.com/en-us/spot/{bingx_pair}/"
+    elif exchange == "bitget":
+        return f"https://www.bitget.com/spot/{pair}"
+    return f"https://www.google.com/search?q={exchange}+{pair}+spot"
 
 
 # =========================================================
@@ -408,12 +456,19 @@ def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote
     for pair in PAIRS:
         # Собираем все цены
         prices_data = []  # [(bid, ask, exchange), ...]
+        now_ms = int(time.time() * 1000)
+        MAX_AGE_MS = 90000
+        MAX_INTERNAL = 0.003
         for ex in EXCHANGES:
             key = (ex, pair)
             if key in current_quotes:
                 q = current_quotes[key]
-                if q.bid > 0 and q.ask > 0:
-                    prices_data.append((q.bid, q.ask, ex))
+                age = now_ms - q.ts
+                if q.bid <= 0 or q.ask <= 0 or age >= MAX_AGE_MS:
+                    continue
+                if (q.ask - q.bid) / q.bid > MAX_INTERNAL:
+                    continue
+                prices_data.append((q.bid, q.ask, ex))
 
         if len(prices_data) < 2:
             continue
@@ -469,6 +524,8 @@ def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote
             "min_ask": min_ask,
             "min_ask_exchange": min_ask_exchange,
             "net_profit_usdt": round(net_profit, 4),
+            "buy_url": get_trade_link(min_ask_exchange, pair),
+            "sell_url": get_trade_link(max_bid_exchange, pair),
         }
 
         # Кулдаун на 5 минут на пару
@@ -781,12 +838,19 @@ def compute_spot_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], Stored
 
     for pair in PAIRS:
         prices_data = []
+        now_ms = int(time.time() * 1000)
+        MAX_AGE_MS = 90000
+        MAX_INTERNAL = 0.003
         for ex in SPOT_EXCHANGES:
             key = (ex, pair)
             if key in current_quotes:
                 q = current_quotes[key]
-                if q.bid > 0 and q.ask > 0:
-                    prices_data.append((q.bid, q.ask, ex))
+                age = now_ms - q.ts
+                if q.bid <= 0 or q.ask <= 0 or age >= MAX_AGE_MS:
+                    continue
+                if (q.ask - q.bid) / q.bid > MAX_INTERNAL:
+                    continue
+                prices_data.append((q.bid, q.ask, ex))
 
         if len(prices_data) < 2:
             continue
@@ -835,6 +899,8 @@ def compute_spot_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], Stored
             "min_ask": min_ask,
             "min_ask_exchange": min_ask_exchange,
             "net_profit_usdt": round(net_profit, 4),
+            "buy_url": get_spot_trade_link(min_ask_exchange, pair),
+            "sell_url": get_spot_trade_link(max_bid_exchange, pair),
         }
 
         if pair in spot_last_alert_time and (current_time - spot_last_alert_time[pair]) < 300:
@@ -877,10 +943,16 @@ async def data_collector():
         tasks = []
         # Фьючерсы (все 9 бирж)
         for pair in PAIRS:
+            now_ms = int(time.time() * 1000)
+            MAX_AGE_MS = 90000
+            MAX_INTERNAL = 0.003
             for ex in EXCHANGES:
                 tasks.append(fetch_limited(ex, pair))
         # Спот (без Deribit)
         for pair in PAIRS:
+            now_ms = int(time.time() * 1000)
+            MAX_AGE_MS = 90000
+            MAX_INTERNAL = 0.003
             for ex in SPOT_EXCHANGES:
                 tasks.append(fetch_limited_spot(ex, pair))
 

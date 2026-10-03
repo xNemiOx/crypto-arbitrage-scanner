@@ -890,3 +890,41 @@ section[id], .top-section, .favorites-section {
 .spot-card {
     border-left: 4px solid #3498db !important;
 }
+
+/* Теги на отдельной строке под названием биржи */
+.card-header + table td:first-child,
+table td:first-child {
+    word-break: break-word;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.4;
+}
+table td .tag {
+    display: block;
+    margin: 4px 0 0 0 !important;
+    padding: 3px 7px;
+    font-size: 0.7em;
+    text-align: center;
+    letter-spacing: 0.5px;
+    border-radius: 4px;
+}
+table th:first-child {
+    width: 34%;
+}
+table th:not(:first-child) {
+    width: 33%;
+}
+
+/* Ссылки-теги для покупки/продажи */
+a.tag {
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-block;
+}
+a.tag:hover {
+    opacity: 0.85;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}

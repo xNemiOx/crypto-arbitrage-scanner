@@ -148,9 +148,9 @@
                                     {% if quote.exchange == data.min_ask_exchange and quote.exchange == data.max_bid_exchange %}
                                         <span class="tag tag-both">обе</span>
                                     {% elif quote.exchange == data.min_ask_exchange %}
-                                        <span class="tag tag-buy">← КУПИТЬ</span>
+                                        <a href="{{ data.buy_url }}" target="_blank" class="tag tag-buy" title="Открыть на {{ data.min_ask_exchange.upper() }}">← КУПИТЬ</a>
                                     {% elif quote.exchange == data.max_bid_exchange %}
-                                        <span class="tag tag-sell">← ПРОДАТЬ</span>
+                                        <a href="{{ data.sell_url }}" target="_blank" class="tag tag-sell" title="Открыть на {{ data.max_bid_exchange.upper() }}">← ПРОДАТЬ</a>
                                     {% endif %}
                                 </td>
                                 <td class="ask">{{ quote.ask|fmt }}</td>
@@ -199,9 +199,9 @@
                                     {% if quote.exchange == data.min_ask_exchange and quote.exchange == data.max_bid_exchange %}
                                         <span class="tag tag-both">обе</span>
                                     {% elif quote.exchange == data.min_ask_exchange %}
-                                        <span class="tag tag-buy">← КУПИТЬ</span>
+                                        <a href="{{ data.buy_url }}" target="_blank" class="tag tag-buy" title="Открыть на {{ data.min_ask_exchange.upper() }}">← КУПИТЬ</a>
                                     {% elif quote.exchange == data.max_bid_exchange %}
-                                        <span class="tag tag-sell">← ПРОДАТЬ</span>
+                                        <a href="{{ data.sell_url }}" target="_blank" class="tag tag-sell" title="Открыть на {{ data.max_bid_exchange.upper() }}">← ПРОДАТЬ</a>
                                     {% endif %}
                                 </td>
                                 <td class="ask">{{ quote.ask|fmt }}</td>
@@ -259,9 +259,9 @@
                                 <td>
                                     {{ quote.exchange }}
                                     {% if quote.exchange == data.min_ask_exchange %}
-                                        <span class="tag tag-buy">← КУПИТЬ</span>
+                                        <a href="{{ data.buy_url }}" target="_blank" class="tag tag-buy" title="Открыть на {{ data.min_ask_exchange.upper() }}">← КУПИТЬ</a>
                                     {% elif quote.exchange == data.max_bid_exchange %}
-                                        <span class="tag tag-sell">← ПРОДАТЬ</span>
+                                        <a href="{{ data.sell_url }}" target="_blank" class="tag tag-sell" title="Открыть на {{ data.max_bid_exchange.upper() }}">← ПРОДАТЬ</a>
                                     {% endif %}
                                 </td>
                                 <td class="ask">{{ quote.ask|fmt }}</td>
@@ -308,9 +308,9 @@
                                 <td>
                                     {{ quote.exchange }}
                                     {% if quote.exchange == data.min_ask_exchange %}
-                                        <span class="tag tag-buy">← КУПИТЬ</span>
+                                        <a href="{{ data.buy_url }}" target="_blank" class="tag tag-buy" title="Открыть на {{ data.min_ask_exchange.upper() }}">← КУПИТЬ</a>
                                     {% elif quote.exchange == data.max_bid_exchange %}
-                                        <span class="tag tag-sell">← ПРОДАТЬ</span>
+                                        <a href="{{ data.sell_url }}" target="_blank" class="tag tag-sell" title="Открыть на {{ data.max_bid_exchange.upper() }}">← ПРОДАТЬ</a>
                                     {% endif %}
                                 </td>
                                 <td class="ask">{{ quote.ask|fmt }}</td>
