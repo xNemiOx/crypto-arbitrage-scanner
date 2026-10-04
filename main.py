@@ -12,6 +12,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+# Paper trading
+import paper_db
+import paper_trader
+paper_db.init_db()
+
 # =========================================================
 # 1. НАСТРОЙКА ПРИЛОЖЕНИЯ И ШАБЛОНОВ
 # =========================================================
@@ -79,6 +84,13 @@ EXCHANGES: List[str] = config.get("exchanges", [])
 ALERT_USD = float(config.get("alerts", {}).get("spread_usd", 0.5))
 ALERT_PCT = float(config.get("alerts", {}).get("spread_pct", 0.5))
 SPOT_ALERTS_ENABLED = config.get("alerts", {}).get("spot_alerts_enabled", False)
+
+# Paper trading параметры
+PAPER_ENABLED = config.get("paper_trading", {}).get("enabled", False)
+PAPER_SIZE_USDT = float(config.get("paper_trading", {}).get("size_usdt", 10))
+PAPER_THRESHOLD_PCT = float(config.get("paper_trading", {}).get("threshold_pct", 0.7))
+PAPER_HOLD_SECONDS = int(config.get("paper_trading", {}).get("hold_seconds", 300))
+PAPER_MAX_OPEN = int(config.get("paper_trading", {}).get("max_open", 20))
 
 # Токен и chat_id берём из переменных окружения (для облака),
 # а если их нет — из config.yaml (для локального запуска)
@@ -153,10 +165,15 @@ telegram_notifier = TelegramNotifier(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
 # 6. КОМИССИИ БИРЖ И ССЫЛКИ НА ТОРГОВЛЮ
 # =========================================================
 EXCHANGE_FEES = {
-    "binance": 0.001,  # 0.1%
-    "bybit": 0.001,
-    "okx": 0.001,
-    "gateio": 0.001,
+    "binance": 0.0004,   # 0.04%
+    "bybit": 0.00055,    # 0.055%
+    "okx": 0.0005,       # 0.05%
+    "gateio": 0.0005,    # 0.05%
+    "mexc": 0.0002,      # 0.02%
+    "htx": 0.0005,       # 0.05%
+    "bingx": 0.0005,     # 0.05%
+    "bitget": 0.0006,    # 0.06%
+    "deribit": 0.0005,   # 0.05%
 }
 
 
@@ -651,6 +668,24 @@ def api_spot_quotes():
     return payload
 
 
+@app.get("/paper/stats")
+def api_paper_stats():
+    """Статистика paper trading."""
+    return paper_db.get_stats()
+
+
+@app.get("/paper/trades")
+def api_paper_trades():
+    """Последние 50 сделок paper trading."""
+    return paper_db.get_recent_trades(50)
+
+
+@app.get("/paper/open")
+def api_paper_open():
+    """Открытые сделки."""
+    return paper_db.get_open_trades()
+
+
 @app.get("/api/render")
 async def api_render(request: Request):
     """Возвращает JSON с готовым HTML карточек — для AJAX-обновления."""
@@ -1008,6 +1043,16 @@ async def data_collector():
             await asyncio.gather(*tasks, return_exceptions=True)
             compute_spreads_and_alerts(quotes_store)
             compute_spot_spreads_and_alerts(spot_quotes_store)
+
+            # Paper trading — только если включён
+            print(f"🔧 PAPER check: enabled={PAPER_ENABLED}, spreads={len(spreads_store)}, quotes={len(quotes_store)}", flush=True)
+            if PAPER_ENABLED:
+                paper_trader.PAPER_TRADE_SIZE_USDT = PAPER_SIZE_USDT
+                paper_trader.PAPER_TRADE_THRESHOLD_PCT = PAPER_THRESHOLD_PCT
+                paper_trader.PAPER_TRADE_HOLD_SECONDS = PAPER_HOLD_SECONDS
+                paper_trader.PAPER_TRADE_MAX_OPEN = PAPER_MAX_OPEN
+                paper_trader.run(spreads_store, quotes_store, EXCHANGE_FEES)
+
         await asyncio.sleep(FETCH_INTERVAL)
 
 
