@@ -21,4 +21,6 @@ __pycache__/
 
 # Файлы ОС
 .DS_Store
-Thumbs.dbpaper_trades.db
+Thumbs.db
+paper_trades.db
+
