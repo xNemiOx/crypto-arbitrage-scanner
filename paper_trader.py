@@ -12,11 +12,12 @@ import paper_db
 # Параметры (будут перезаписаны из main.py при импорте)
 PAPER_TRADE_SIZE_USDT = 50.0
 PAPER_TRADE_THRESHOLD_PCT = 0.7
-PAPER_TRADE_HOLD_SECONDS = 900      # 15 минут максимум (аварийный выход)
+PAPER_TRADE_HOLD_SECONDS = 180      # 15 минут максимум (аварийный выход)
 PAPER_TRADE_MAX_OPEN = 20
 PAPER_TRADE_MIN_PROFIT = 0.0
-PAPER_TRADE_STOP_LOSS_PCT = -0.5    # стоп-лосс: если gross < -0.5%, закрываем
+PAPER_TRADE_STOP_LOSS_PCT = -0.3    # стоп-лосс: если gross < -0.5%, закрываем
 
+# Биржи, которые отдают нереальные данные — не используем в paper trading
 
 def _get_quote(quotes_store: Dict, exchange: str, pair: str) -> Optional[Dict]:
     """Достаёт котировку из quotes_store или None."""
@@ -27,7 +28,7 @@ def _get_quote(quotes_store: Dict, exchange: str, pair: str) -> Optional[Dict]:
     return None
 
 
-def _check_max_age(q: Dict, max_age_ms: int = 120000) -> bool:
+def _check_max_age(q: Dict, max_age_ms: int = 180000) -> bool:
     """Проверяет, что котировка свежая (по умолчанию 120 секунд)."""
     if not q:
         return False
@@ -50,6 +51,11 @@ def try_open_trades(spreads_store: Dict, quotes_store: Dict, exchange_fees: Dict
         key=lambda x: x[1].get("spread_pct", 0),
         reverse=True,
     )
+
+    # Отладка: показываем топ-3 спреда
+    top3 = sorted_spreads[:3]
+    top3_str = " | ".join(f"{p}:{d.get('spread_pct', 0):.3f}%" for p, d in top3)
+    print(f"📊 PAPER top-3: {top3_str}", flush=True)
 
     for pair, data in sorted_spreads:
         if open_count >= PAPER_TRADE_MAX_OPEN:
@@ -91,6 +97,7 @@ def try_open_trades(spreads_store: Dict, quotes_store: Dict, exchange_fees: Dict
         # Повторная проверка: реальный спред >= порога
         real_spread = (sell_price - buy_price) / buy_price * 100
         if real_spread < PAPER_TRADE_THRESHOLD_PCT:
+            print(f"   ⚠️ {pair}: real_spread={real_spread:.4f}% < порог {PAPER_TRADE_THRESHOLD_PCT}%")
             continue
 
         # Проверяем, что прибыль покрывает комиссии
