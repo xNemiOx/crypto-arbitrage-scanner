@@ -12,7 +12,7 @@ import paper_db
 # Параметры (будут перезаписаны из main.py при импорте)
 PAPER_TRADE_SIZE_USDT = 50.0
 PAPER_TRADE_THRESHOLD_PCT = 0.7
-PAPER_TRADE_HOLD_SECONDS = 180      # 15 минут максимум (аварийный выход)
+PAPER_TRADE_HOLD_SECONDS = 150      # 15 минут максимум (аварийный выход)
 PAPER_TRADE_MAX_OPEN = 20
 PAPER_TRADE_MIN_PROFIT = 0.0
 PAPER_TRADE_STOP_LOSS_PCT = -0.3    # стоп-лосс: если gross < -0.5%, закрываем
@@ -218,9 +218,10 @@ def try_close_trades(quotes_store: Dict, exchange_fees: Dict):
 
 
 def run(spreads_store: Dict, quotes_store: Dict, exchange_fees: Dict):
-    """Одна итерация paper trading."""
+    """Одна итерация paper trading — только ОТКРЫТИЕ новых сделок.
+    Закрытие теперь в отдельном цикле close_positions_loop в main.py.
+    """
     try:
-        try_close_trades(quotes_store, exchange_fees)
         try_open_trades(spreads_store, quotes_store, exchange_fees)
     except Exception as e:
-        print(f"❌ Paper trader error: {e}")
+        print(f"❌ Paper trader error: {e}", flush=True)

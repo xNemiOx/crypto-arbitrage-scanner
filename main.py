@@ -1010,6 +1010,25 @@ def compute_spot_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], Stored
             print(f"📨 Отправлено СПОТ-уведомление по паре {pair}")
 
 
+async def close_positions_loop():
+    """
+    Отдельная задача: закрывает paper-сделки каждые 10 секунд,
+    независимо от цикла сбора данных.
+    """
+    await asyncio.sleep(30)  # даём время на первый цикл
+    while True:
+        try:
+            if PAPER_ENABLED:
+                paper_trader.PAPER_TRADE_SIZE_USDT = PAPER_SIZE_USDT
+                paper_trader.PAPER_TRADE_THRESHOLD_PCT = PAPER_THRESHOLD_PCT
+                paper_trader.PAPER_TRADE_HOLD_SECONDS = PAPER_HOLD_SECONDS
+                paper_trader.PAPER_TRADE_MAX_OPEN = PAPER_MAX_OPEN
+                paper_trader.try_close_trades(quotes_store, EXCHANGE_FEES)
+        except Exception as e:
+            print(f"❌ close_positions_loop error: {e}", flush=True)
+        await asyncio.sleep(10)
+
+
 async def data_collector():
     # Ограничиваем параллелизм: не более 10 одновременных запросов
     semaphore = asyncio.Semaphore(10)
@@ -1064,6 +1083,8 @@ async def startup_event():
     print(">>> Запуск фонового сборщика данных...")
     await get_http_client()  # создаём клиент заранее
     asyncio.create_task(data_collector())
+    asyncio.create_task(close_positions_loop())
+    print(">>> Цикл закрытия сделок запущен", flush=True)
 
 
 @app.on_event("shutdown")
