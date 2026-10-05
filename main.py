@@ -17,6 +17,11 @@ import paper_db
 import paper_trader
 paper_db.init_db()
 
+# Aggressive paper trading (усреднение)
+import paper_db2
+import paper_trader2
+paper_db2.init_db()
+
 # =========================================================
 # 1. НАСТРОЙКА ПРИЛОЖЕНИЯ И ШАБЛОНОВ
 # =========================================================
@@ -91,6 +96,16 @@ PAPER_SIZE_USDT = float(config.get("paper_trading", {}).get("size_usdt", 10))
 PAPER_THRESHOLD_PCT = float(config.get("paper_trading", {}).get("threshold_pct", 0.7))
 PAPER_HOLD_SECONDS = int(config.get("paper_trading", {}).get("hold_seconds", 300))
 PAPER_MAX_OPEN = int(config.get("paper_trading", {}).get("max_open", 20))
+
+# Aggressive trading параметры
+AGG_ENABLED = config.get("aggressive_trading", {}).get("enabled", False)
+AGG_SIZE_USDT = float(config.get("aggressive_trading", {}).get("size_usdt", 50))
+AGG_THRESHOLD_PCT = float(config.get("aggressive_trading", {}).get("threshold_pct", 0.5))
+AGG_ADD_THRESHOLD_PCT = float(config.get("aggressive_trading", {}).get("add_threshold_pct", 20))
+AGG_ADD_STEP_PCT = float(config.get("aggressive_trading", {}).get("add_step_pct", 0.1))
+AGG_CLOSE_THRESHOLD_PCT = float(config.get("aggressive_trading", {}).get("close_threshold_pct", 0.15))
+AGG_MAX_ADDITIONS = int(config.get("aggressive_trading", {}).get("max_additions", 10))
+AGG_MAX_OPEN = int(config.get("aggressive_trading", {}).get("max_open", 10))
 
 # Токен и chat_id берём из переменных окружения (для облака),
 # а если их нет — из config.yaml (для локального запуска)
@@ -668,6 +683,24 @@ def api_spot_quotes():
     return payload
 
 
+@app.get("/agg/stats")
+def api_agg_stats():
+    """Статистика агрессивной стратегии."""
+    return paper_db2.get_stats()
+
+
+@app.get("/agg/trades")
+def api_agg_trades():
+    """Последние 50 сделок агрессивной стратегии."""
+    return paper_db2.get_recent_trades(50)
+
+
+@app.get("/agg/open")
+def api_agg_open():
+    """Открытые сделки агрессивной стратегии."""
+    return paper_db2.get_open_trades()
+
+
 @app.get("/paper/stats")
 def api_paper_stats():
     """Статистика paper trading."""
@@ -1024,6 +1057,7 @@ async def close_positions_loop():
                 paper_trader.PAPER_TRADE_HOLD_SECONDS = PAPER_HOLD_SECONDS
                 paper_trader.PAPER_TRADE_MAX_OPEN = PAPER_MAX_OPEN
                 paper_trader.try_close_trades(quotes_store, EXCHANGE_FEES)
+                paper_trader2.close_loop(quotes_store, EXCHANGE_FEES)
         except Exception as e:
             print(f"❌ close_positions_loop error: {e}", flush=True)
         await asyncio.sleep(10)
@@ -1071,6 +1105,17 @@ async def data_collector():
                 paper_trader.PAPER_TRADE_HOLD_SECONDS = PAPER_HOLD_SECONDS
                 paper_trader.PAPER_TRADE_MAX_OPEN = PAPER_MAX_OPEN
                 paper_trader.run(spreads_store, quotes_store, EXCHANGE_FEES)
+
+            # Aggressive strategy — открытие/добавление
+            if AGG_ENABLED:
+                paper_trader2.AGG_TRADE_SIZE_USDT = AGG_SIZE_USDT
+                paper_trader2.AGG_THRESHOLD_PCT = AGG_THRESHOLD_PCT
+                paper_trader2.AGG_ADD_THRESHOLD_PCT = AGG_ADD_THRESHOLD_PCT
+                paper_trader2.AGG_ADD_STEP_PCT = AGG_ADD_STEP_PCT
+                paper_trader2.AGG_CLOSE_THRESHOLD_PCT = AGG_CLOSE_THRESHOLD_PCT
+                paper_trader2.AGG_MAX_ADDITIONS = AGG_MAX_ADDITIONS
+                paper_trader2.AGG_MAX_OPEN = AGG_MAX_OPEN
+                paper_trader2.run(spreads_store, quotes_store, EXCHANGE_FEES)
 
         await asyncio.sleep(FETCH_INTERVAL)
 
