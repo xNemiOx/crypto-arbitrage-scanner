@@ -76,6 +76,14 @@ def try_open_trades(spreads_store: Dict, quotes_store: Dict, exchange_fees: Dict
         if paper_db.has_open_trade(pair):
             continue
 
+        # Пара заблокирована после 2 убытков подряд?
+        if paper_db.is_pair_blocked(pair):
+            continue
+
+        # Кулдаун после последней сделки (5 мин)?
+        if paper_db.is_pair_in_cooldown(pair, cooldown_sec=300):
+            continue
+
         buy_ex = data.get("min_ask_exchange")
         sell_ex = data.get("max_bid_exchange")
         if not buy_ex or not sell_ex or buy_ex == sell_ex:

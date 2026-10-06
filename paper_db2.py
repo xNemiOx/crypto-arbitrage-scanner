@@ -31,6 +31,8 @@ def init_db():
             gross_profit REAL,
             fees REAL,
             net_profit REAL,
+            close_buy_bid REAL,
+            close_sell_ask REAL,
             close_reason TEXT,
             status TEXT NOT NULL DEFAULT 'open'
         )

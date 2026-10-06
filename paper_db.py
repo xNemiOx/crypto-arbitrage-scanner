@@ -41,6 +41,16 @@ def init_db():
     # Индекс для быстрого поиска открытых сделок по паре
     c.execute("CREATE INDEX IF NOT EXISTS idx_status_pair ON trades(status, pair)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_opened_at ON trades(opened_at)")
+
+    # Таблица для отслеживания проблемных пар
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS pair_blocks (
+            pair TEXT PRIMARY KEY,
+            consecutive_losses INTEGER NOT NULL DEFAULT 0,
+            blocked_until INTEGER NOT NULL DEFAULT 0,
+            last_trade_at INTEGER NOT NULL DEFAULT 0
+        )
+    """)
     conn.commit()
     conn.close()
     print(f"✅ БД инициализирована: {DB_PATH}")
@@ -139,9 +149,71 @@ def close_trade(
 
     emoji = "🟢" if net > 0 else "🔴"
     print(f"{emoji} Закрыта сделка #{trade_id}: {trade['pair']} "
-          f"gross={gross:.4f} fees={fees:.4f} net={net:.4f} ({close_reason})")
+          f"gross={gross:.4f} fees={fees:.4f} net={net:.4f} ({close_reason})", flush=True)
+
+    # Регистрируем результат для авто-блокировки
+    register_trade_result(trade["pair"], is_win=(net > 0))
 
     return {"gross": gross, "fees": fees, "net": net}
+
+
+
+
+def is_pair_blocked(pair: str) -> bool:
+    """Проверяет, заблокирована ли пара."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT blocked_until FROM pair_blocks WHERE pair = ?", (pair,))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return False
+    return int(time.time() * 1000) < row[0]
+
+
+def is_pair_in_cooldown(pair: str, cooldown_sec: int = 300) -> bool:
+    """Проверяет кулдаун после последней сделки по паре (5 мин по умолчанию)."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT last_trade_at FROM pair_blocks WHERE pair = ?", (pair,))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return False
+    return int(time.time() * 1000) - row[0] < cooldown_sec * 1000
+
+
+def register_trade_result(pair: str, is_win: bool):
+    """Обновляет счётчик убытков. Если 2 подряд — блокирует на 2 часа."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT consecutive_losses FROM pair_blocks WHERE pair = ?", (pair,))
+    row = c.fetchone()
+    current_losses = row[0] if row else 0
+    now_ms = int(time.time() * 1000)
+
+    if is_win:
+        # Прибыль — сбрасываем счётчик
+        new_losses = 0
+        blocked_until = 0
+    else:
+        new_losses = current_losses + 1
+        if new_losses >= 2:
+            # 2 убытка подряд — блок на 2 часа
+            blocked_until = now_ms + 2 * 3600 * 1000
+            print(f"🚫 Пара {pair} ЗАБЛОКИРОВАНА на 2 часа ({new_losses} убытка подряд)", flush=True)
+
+    c.execute("""
+        INSERT INTO pair_blocks (pair, consecutive_losses, blocked_until, last_trade_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(pair) DO UPDATE SET
+            consecutive_losses = ?,
+            blocked_until = ?,
+            last_trade_at = ?
+    """, (pair, new_losses, blocked_until, now_ms,
+          new_losses, blocked_until, now_ms))
+    conn.commit()
+    conn.close()
 
 
 def get_open_trades() -> List[Dict]:
