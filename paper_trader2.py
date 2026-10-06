@@ -14,8 +14,8 @@ import paper_db2
 # ===== Параметры (перезаписываются из main.py) =====
 AGG_TRADE_SIZE_USDT = 50.0           # размер одного добавления
 AGG_THRESHOLD_PCT = 0.5              # минимальный спред для входа
-AGG_ADD_THRESHOLD_PCT = 20           # +20% к спреду → добавляем
-AGG_ADD_STEP_PCT = 0.1               # минимальный шаг спреда для добавления (0.1%)
+AGG_ADD_THRESHOLD_PCT = 25           # +25% к спреду → добавляем
+AGG_ADD_STEP_PCT = 0.15              # или +0.15% абсолютно
 AGG_CLOSE_THRESHOLD_PCT = 0.15       # закрыть при спреде < 0.15%
 AGG_MAX_ADDITIONS = 10               # максимум $500 на пару
 AGG_MAX_OPEN = 10                    # максимум 30 открытых сделок
@@ -100,6 +100,10 @@ def try_close_trades(quotes_store: Dict, exchange_fees: Dict):
         # Спред между текущими ценами
         spread_now_pct = (close_buy_bid - close_sell_ask) / close_sell_ask * 100 if close_sell_ask > 0 else 0
 
+        # Отладка: показываем текущее состояние, если позиция в инверсии
+        if spread_now_pct < 0:
+            print(f"⚠️ AGG #{trade['id']} {pair}: спред ИНВЕРТИРОВАН ({spread_now_pct:.3f}%), ждём схождения. net={net:+.4f}", flush=True)
+
         # Условие закрытия: спред сузился до порога И net > 0
         if spread_now_pct < AGG_CLOSE_THRESHOLD_PCT and net > 0:
             paper_db2.close_trade(
@@ -112,17 +116,9 @@ def try_close_trades(quotes_store: Dict, exchange_fees: Dict):
             )
             continue
 
-        # Крайний случай: спред инвертировался (стало выгодно наоборот) — тоже закрываем
-        if spread_now_pct < -0.5:
-            paper_db2.close_trade(
-                trade_id=trade["id"],
-                close_buy_bid=close_buy_bid,
-                close_sell_ask=close_sell_ask,
-                buy_fee=buy_fee,
-                sell_fee=sell_fee,
-                close_reason="inverted",
-            )
-            continue
+        # БЕЗ закрытия по инверсии — ждём, пока спред сойдётся.
+        # По стратегии усреднения: расширение спреда = возможность докупить.
+        # Закрываем ТОЛЬКО при сужении до AGG_CLOSE_THRESHOLD_PCT.
 
 
 # ==================================================
