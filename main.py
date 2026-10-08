@@ -12,10 +12,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-# Paper trading
-import paper_db
-import paper_trader
-paper_db.init_db()
+# Aggressive paper trading (усреднение) — множественные стратегии
+import paper_db2
+import paper_trader2
+paper_db2.init_db()
+
+# Multi-strategy (49 стратегий)
+import multi_db
+import multi_trader
+multi_db.init_db()
+multi_trader.init_strategies()
 
 # Aggressive paper trading (усреднение)
 import paper_db2
@@ -683,6 +689,36 @@ def api_spot_quotes():
     return payload
 
 
+@app.get("/multi/stats")
+def api_multi_stats():
+    """Статистика всех стратегий (отсортирована по прибыли)."""
+    return multi_db.get_all_strategies_stats()
+
+
+@app.get("/multi/stats/{sid}")
+def api_multi_stats_one(sid: int):
+    """Статистика конкретной стратегии."""
+    return multi_db.get_strategy_stats(sid)
+
+
+@app.get("/multi/trades/{sid}")
+def api_multi_trades(sid: int):
+    """Последние 100 сделок стратегии."""
+    return multi_db.get_strategy_trades(sid, 100)
+
+
+@app.get("/multi/open")
+def api_multi_open():
+    """Все открытые сделки по всем стратегиям."""
+    return multi_db.get_open_trades()
+
+
+@app.get("/multi/open/{sid}")
+def api_multi_open_one(sid: int):
+    """Открытые сделки конкретной стратегии."""
+    return multi_db.get_open_trades(sid)
+
+
 @app.get("/agg/stats")
 def api_agg_stats():
     """Статистика агрессивной стратегии."""
@@ -699,24 +735,6 @@ def api_agg_trades():
 def api_agg_open():
     """Открытые сделки агрессивной стратегии."""
     return paper_db2.get_open_trades()
-
-
-@app.get("/paper/stats")
-def api_paper_stats():
-    """Статистика paper trading."""
-    return paper_db.get_stats()
-
-
-@app.get("/paper/trades")
-def api_paper_trades():
-    """Последние 50 сделок paper trading."""
-    return paper_db.get_recent_trades(50)
-
-
-@app.get("/paper/open")
-def api_paper_open():
-    """Открытые сделки."""
-    return paper_db.get_open_trades()
 
 
 @app.get("/api/render")
@@ -1051,13 +1069,7 @@ async def close_positions_loop():
     await asyncio.sleep(30)  # даём время на первый цикл
     while True:
         try:
-            if PAPER_ENABLED:
-                paper_trader.PAPER_TRADE_SIZE_USDT = PAPER_SIZE_USDT
-                paper_trader.PAPER_TRADE_THRESHOLD_PCT = PAPER_THRESHOLD_PCT
-                paper_trader.PAPER_TRADE_HOLD_SECONDS = PAPER_HOLD_SECONDS
-                paper_trader.PAPER_TRADE_MAX_OPEN = PAPER_MAX_OPEN
-                paper_trader.try_close_trades(quotes_store, EXCHANGE_FEES)
-                paper_trader2.close_loop(quotes_store, EXCHANGE_FEES)
+            multi_trader.close_loop(quotes_store, EXCHANGE_FEES)
         except Exception as e:
             print(f"❌ close_positions_loop error: {e}", flush=True)
         await asyncio.sleep(10)
@@ -1099,23 +1111,14 @@ async def data_collector():
 
             # Paper trading — только если включён
             print(f"🔧 PAPER check: enabled={PAPER_ENABLED}, spreads={len(spreads_store)}, quotes={len(quotes_store)}", flush=True)
-            if PAPER_ENABLED:
-                paper_trader.PAPER_TRADE_SIZE_USDT = PAPER_SIZE_USDT
-                paper_trader.PAPER_TRADE_THRESHOLD_PCT = PAPER_THRESHOLD_PCT
-                paper_trader.PAPER_TRADE_HOLD_SECONDS = PAPER_HOLD_SECONDS
-                paper_trader.PAPER_TRADE_MAX_OPEN = PAPER_MAX_OPEN
-                paper_trader.run(spreads_store, quotes_store, EXCHANGE_FEES)
+            # paper bot удалён
 
-            # Aggressive strategy — открытие/добавление
-            if AGG_ENABLED:
-                paper_trader2.AGG_TRADE_SIZE_USDT = AGG_SIZE_USDT
-                paper_trader2.AGG_THRESHOLD_PCT = AGG_THRESHOLD_PCT
-                paper_trader2.AGG_ADD_THRESHOLD_PCT = AGG_ADD_THRESHOLD_PCT
-                paper_trader2.AGG_ADD_STEP_PCT = AGG_ADD_STEP_PCT
-                paper_trader2.AGG_CLOSE_THRESHOLD_PCT = AGG_CLOSE_THRESHOLD_PCT
-                paper_trader2.AGG_MAX_ADDITIONS = AGG_MAX_ADDITIONS
-                paper_trader2.AGG_MAX_OPEN = AGG_MAX_OPEN
-                paper_trader2.run(spreads_store, quotes_store, EXCHANGE_FEES)
+            # Multi-strategy — открытие/добавление по всем 49 стратегиям
+            try:
+                multi_trader.run(spreads_store, quotes_store, EXCHANGE_FEES)
+            except Exception as e:
+                print(f"❌ multi_trader.run error: {e}", flush=True)
+            # AGG strategy отключён
 
         await asyncio.sleep(FETCH_INTERVAL)
 
