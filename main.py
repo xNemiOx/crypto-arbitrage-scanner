@@ -495,8 +495,8 @@ def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote
         # Собираем все цены
         prices_data = []  # [(bid, ask, exchange), ...]
         now_ms = int(time.time() * 1000)
-        MAX_AGE_MS = 90000
-        MAX_INTERNAL = 0.003
+        MAX_AGE_MS = 300000
+        MAX_INTERNAL = 0.01
         for ex in EXCHANGES:
             key = (ex, pair)
             if key in current_quotes:
@@ -525,9 +525,9 @@ def compute_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], StoredQuote
             bid_ratio = bid / median_bid if median_bid > 0 else 1
             ask_ratio = ask / median_ask if median_ask > 0 else 1
 
-            if bid_ratio > 3 or bid_ratio < 0.33:
+            if bid_ratio > 10 or bid_ratio < 0.1:
                 continue
-            if ask_ratio > 3 or ask_ratio < 0.33:
+            if ask_ratio > 10 or ask_ratio < 0.1:
                 continue
 
             filtered.append((bid, ask, ex))
@@ -973,8 +973,8 @@ def compute_spot_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], Stored
     for pair in PAIRS:
         prices_data = []
         now_ms = int(time.time() * 1000)
-        MAX_AGE_MS = 90000
-        MAX_INTERNAL = 0.003
+        MAX_AGE_MS = 300000
+        MAX_INTERNAL = 0.01
         for ex in SPOT_EXCHANGES:
             key = (ex, pair)
             if key in current_quotes:
@@ -998,9 +998,9 @@ def compute_spot_spreads_and_alerts(current_quotes: Dict[Tuple[str, str], Stored
         for bid, ask, ex in prices_data:
             bid_ratio = bid / median_bid if median_bid > 0 else 1
             ask_ratio = ask / median_ask if median_ask > 0 else 1
-            if bid_ratio > 3 or bid_ratio < 0.33:
+            if bid_ratio > 10 or bid_ratio < 0.1:
                 continue
-            if ask_ratio > 3 or ask_ratio < 0.33:
+            if ask_ratio > 10 or ask_ratio < 0.1:
                 continue
             filtered.append((bid, ask, ex))
 
@@ -1092,15 +1092,15 @@ async def data_collector():
         # Фьючерсы (все 9 бирж)
         for pair in PAIRS:
             now_ms = int(time.time() * 1000)
-            MAX_AGE_MS = 90000
-            MAX_INTERNAL = 0.003
+            MAX_AGE_MS = 300000
+            MAX_INTERNAL = 0.01
             for ex in EXCHANGES:
                 tasks.append(fetch_limited(ex, pair))
         # Спот (без Deribit)
         for pair in PAIRS:
             now_ms = int(time.time() * 1000)
-            MAX_AGE_MS = 90000
-            MAX_INTERNAL = 0.003
+            MAX_AGE_MS = 300000
+            MAX_INTERNAL = 0.01
             for ex in SPOT_EXCHANGES:
                 tasks.append(fetch_limited_spot(ex, pair))
 
