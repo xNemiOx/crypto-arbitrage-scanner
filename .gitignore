@@ -24,3 +24,11 @@ __pycache__/
 Thumbs.db
 paper_trades.db
 
+
+# Бэкапы и БД
+*.bak*
+*.bak_*
+*.db
+*.db-wal
+*.db-shm
+pairs_report.json
